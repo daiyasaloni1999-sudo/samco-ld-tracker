@@ -333,7 +333,18 @@ select:focus,input:focus{border-color:#999}
       <div class="sbox-title"><i class="ti ti-certificate" style="color:#1d4ed8"></i> NISM Pathshala — Invite candidate</div>
       <div class="field" style="margin-bottom:8px"><label>WhatsApp invitation message</label><textarea id="inv-nism-wa" rows="6" style="width:100%;font-size:11px;padding:8px;border:1px solid #e5e4de;border-radius:7px;background:#f8f8f5;resize:vertical;font-family:inherit;line-height:1.6;margin-top:4px"></textarea></div>
       <div class="field" style="margin-bottom:8px"><label>Email subject</label><input id="inv-nism-subj" type="text" style="width:100%;margin-top:4px" placeholder="Subject line"></div>
-      <div class="field" style="margin-bottom:10px"><label>Email body</label><textarea id="inv-nism-email" rows="6" style="width:100%;font-size:11px;padding:8px;border:1px solid #e5e4de;border-radius:7px;background:#f8f8f5;resize:vertical;font-family:inherit;line-height:1.6;margin-top:4px"></textarea></div>
+      <div class="field" style="margin-bottom:8px"><label>Email body</label><textarea id="inv-nism-email" rows="6" style="width:100%;font-size:11px;padding:8px;border:1px solid #e5e4de;border-radius:7px;background:#f8f8f5;resize:vertical;font-family:inherit;line-height:1.6;margin-top:4px"></textarea></div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Email banner image (optional)</label>
+        <div style="margin-top:4px;border:1px dashed #ddd;border-radius:7px;padding:10px;background:#f8f8f5">
+          <input type="file" id="inv-nism-img" accept="image/*" onchange="previewImg('nism')" style="font-size:11px;margin-bottom:6px">
+          <div id="inv-nism-img-preview" style="display:none;margin-top:6px">
+            <img id="inv-nism-img-el" style="max-width:100%;max-height:140px;border-radius:5px;border:1px solid #eee" alt="Preview">
+            <div style="margin-top:5px"><button class="btn btn-red btn-sm" onclick="clearImg('nism')"><i class="ti ti-x"></i> Remove image</button></div>
+          </div>
+          <div style="font-size:10px;color:#aaa;margin-top:4px">Image will appear at the top of the email. Supported: JPG, PNG, GIF. Max ~1MB recommended.</div>
+        </div>
+      </div>
       <div class="field" style="margin-bottom:10px"><label>Select candidate to invite</label>
         <select id="inv-nism-candidate" style="width:100%;margin-top:4px"><option value="">— select candidate —</option></select>
       </div>
@@ -348,6 +359,17 @@ select:focus,input:focus{border-color:#999}
       <div class="field" style="margin-bottom:8px"><label>WhatsApp message for BDM (they forward to partner)</label><textarea id="inv-dd-wa" rows="6" style="width:100%;font-size:11px;padding:8px;border:1px solid #e5e4de;border-radius:7px;background:#f8f8f5;resize:vertical;font-family:inherit;line-height:1.6;margin-top:4px"></textarea></div>
       <div class="field" style="margin-bottom:8px"><label>Email subject</label><input id="inv-dd-subj" type="text" style="width:100%;margin-top:4px" placeholder="Subject line"></div>
       <div class="field" style="margin-bottom:10px"><label>Email body</label><textarea id="inv-dd-email" rows="6" style="width:100%;font-size:11px;padding:8px;border:1px solid #e5e4de;border-radius:7px;background:#f8f8f5;resize:vertical;font-family:inherit;line-height:1.6;margin-top:4px"></textarea></div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Email banner image (optional)</label>
+        <div style="margin-top:4px;border:1px dashed #ddd;border-radius:7px;padding:10px;background:#f8f8f5">
+          <input type="file" id="inv-dd-img" accept="image/*" onchange="previewImg('dd')" style="font-size:11px;margin-bottom:6px">
+          <div id="inv-dd-img-preview" style="display:none;margin-top:6px">
+            <img id="inv-dd-img-el" style="max-width:100%;max-height:140px;border-radius:5px;border:1px solid #eee" alt="Preview">
+            <div style="margin-top:5px"><button class="btn btn-red btn-sm" onclick="clearImg('dd')"><i class="ti ti-x"></i> Remove image</button></div>
+          </div>
+          <div style="font-size:10px;color:#aaa;margin-top:4px">Image will appear at the top of the email. Supported: JPG, PNG, GIF. Max ~1MB recommended.</div>
+        </div>
+      </div>
       <div class="field" style="margin-bottom:10px"><label>Select BDM to invite</label>
         <select id="inv-dd-bdm" style="width:100%;margin-top:4px"><option value="">— select BDM —</option></select>
       </div>
@@ -766,6 +788,7 @@ function renderNism(){
       <td><div style="display:flex;gap:3px">
         <button class="btn btn-green btn-sm" onclick="openRemind(${r.id},'nism','wa')" title="WhatsApp BDM"><i class="ti ti-brand-whatsapp"></i></button>
         <button class="btn btn-blue btn-sm" onclick="openRemind(${r.id},'nism','email')" title="Email BDM"><i class="ti ti-mail"></i></button>
+        <button class="btn btn-red btn-sm" onclick="deleteNism(${r.id})" title="Delete record"><i class="ti ti-trash"></i></button>
       </div></td>
     </tr>`;
   }).join(''):`<tr><td colspan="9" class="no-rows">No candidates match this filter.</td></tr>`;
@@ -828,6 +851,7 @@ function renderDD(){
       <td><div style="display:flex;gap:3px">
         <button class="btn btn-green btn-sm" onclick="openRemind(${r.id},'dd','wa')" title="WhatsApp BDM"><i class="ti ti-brand-whatsapp"></i></button>
         <button class="btn btn-blue btn-sm" onclick="openRemind(${r.id},'dd','email')" title="Email BDM"><i class="ti ti-mail"></i></button>
+        <button class="btn btn-red btn-sm" onclick="deleteDD(${r.id})" title="Delete record"><i class="ti ti-trash"></i></button>
       </div></td>
     </tr>`;
   }).join(''):`<tr><td colspan="10" class="no-rows">No partners match this filter.</td></tr>`;
@@ -859,6 +883,8 @@ function updateNismStatus(id,v){ const r=nismData.find(r=>r.id===id); if(r){r.st
 function updateDDStatus(id,v){   const r=ddData.find(r=>r.id===id);   if(r){r.status=v;r.stageDate=today();} save();renderDD();updateRC(); }
 function updateNismField(id,field,val){ const r=nismData.find(r=>r.id===id); if(r){r[field]=val; if(field==='arn'&&val) r.status='arn_registered';} save(); renderNism(); }
 function updateDDField(id,field,val){   const r=ddData.find(r=>r.id===id);   if(r) r[field]=val; save(); }
+function deleteNism(id){ const r=nismData.find(r=>r.id===id); if(!r) return; if(!confirm("Delete \""+r.name+"\" from NISM pipeline? This cannot be undone.")) return; nismData=nismData.filter(x=>x.id!==id); save(); renderNism(); updateRC(); toast("Record deleted."); }
+function deleteDD(id){   const r=ddData.find(r=>r.id===id);   if(!r) return; if(!confirm("Delete ARN \""+r.arn+"\" from Deep Dive? This cannot be undone.")) return; ddData=ddData.filter(x=>x.id!==id); save(); renderDD(); updateRC(); toast("Record deleted."); }
 
 function addNism(){
   const name=document.getElementById('n-name').value.trim();
@@ -1036,19 +1062,80 @@ function sendInvWA(type){
   }
 }
 
+// image storage (base64, in memory only — not persisted)
+const invImgs = { nism: null, dd: null };
+
+function previewImg(type){
+  const file = document.getElementById('inv-'+type+'-img').files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    invImgs[type] = e.target.result;
+    document.getElementById('inv-'+type+'-img-el').src = e.target.result;
+    document.getElementById('inv-'+type+'-img-preview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+function clearImg(type){
+  invImgs[type] = null;
+  document.getElementById('inv-'+type+'-img').value = '';
+  document.getElementById('inv-'+type+'-img-preview').style.display = 'none';
+  document.getElementById('inv-'+type+'-img-el').src = '';
+}
+
 function sendInvEmail(type){
   if(type==='nism'){
     const sel=document.getElementById('inv-nism-candidate').value;
     const r=nismData.find(x=>x.id==sel);
     const subj=fillTmpl(invTmpls.nism.subject||DEFAULT_INV.nism.subject,{name:r?r.name:'',sender:cfg.myName});
-    const body=fillTmpl(invTmpls.nism.email||DEFAULT_INV.nism.email,{name:r?r.name:'',bdm:r?r.bdm:'',sender:cfg.myName});
-    window.open(`mailto:${r?.email||''}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`,'_blank');
+    const bodyText=fillTmpl(invTmpls.nism.email||DEFAULT_INV.nism.email,{name:r?r.name:'',bdm:r?r.bdm:'',sender:cfg.myName});
+    if(invImgs.nism){
+      // open HTML email window with embedded image
+      openHtmlEmailWindow(subj, bodyText, invImgs.nism, r?.email||'');
+    } else {
+      window.open(`mailto:${r?.email||''}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(bodyText)}`,'_blank');
+    }
   } else {
     const bdm=document.getElementById('inv-dd-bdm').value;
     const subj=fillTmpl(invTmpls.dd.subject||DEFAULT_INV.dd.subject,{bdm:bdm||'',sender:cfg.myName});
-    const body=fillTmpl(invTmpls.dd.email||DEFAULT_INV.dd.email,{bdm:bdm||'',sender:cfg.myName});
-    window.open(`mailto:?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`,'_blank');
+    const bodyText=fillTmpl(invTmpls.dd.email||DEFAULT_INV.dd.email,{bdm:bdm||'',sender:cfg.myName});
+    if(invImgs.dd){
+      openHtmlEmailWindow(subj, bodyText, invImgs.dd, '');
+    } else {
+      window.open(`mailto:?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(bodyText)}`,'_blank');
+    }
   }
+}
+
+function openHtmlEmailWindow(subject, bodyText, imgSrc, toEmail){
+  // Opens a new window with a formatted email preview + copy button
+  // since mailto: can't carry images, we show a ready-to-copy HTML version
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Email Preview</title>
+  <style>body{font-family:-apple-system,sans-serif;background:#f4f4f1;display:flex;justify-content:center;padding:30px}
+  .card{background:#fff;border-radius:12px;padding:30px;max-width:600px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,.1)}
+  .actions{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  .btn{padding:8px 16px;border-radius:7px;border:1px solid #ddd;cursor:pointer;font-size:13px;font-family:inherit}
+  .btn-primary{background:#1a1a18;color:#fff;border-color:#1a1a18}
+  .subj{font-size:13px;color:#888;margin-bottom:6px}strong{color:#1a1a18}
+  .body-text{white-space:pre-wrap;font-size:13px;line-height:1.7;color:#333;margin-top:16px;border-top:1px solid #eee;padding-top:16px}
+  img{width:100%;border-radius:8px;margin-bottom:16px}</style></head>
+  <body><div class="card">
+  <div class="actions">
+    <button class="btn btn-primary" onclick="openMail()">Open in email client</button>
+    <button class="btn" onclick="copyBody()">Copy email body</button>
+  </div>
+  <div class="subj">To: <strong>${toEmail||'(select recipient)'}</strong></div>
+  <div class="subj">Subject: <strong>${subject}</strong></div>
+  <img src="${imgSrc}" alt="Invitation banner">
+  <div class="body-text" id="bodyText">${bodyText}</div>
+  </div>
+  <script>
+  function openMail(){ window.open('mailto:${toEmail}?subject='+encodeURIComponent('${subject}')+'&body='+encodeURIComponent(document.getElementById('bodyText').innerText),'_blank'); }
+  function copyBody(){ navigator.clipboard.writeText(document.getElementById('bodyText').innerText).then(()=>alert('Body copied! Paste into your email client.')); }
+  <\/script></body></html>`;
+  const w = window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
 }
 
 // ══════════════════════════════════════════════════════════
