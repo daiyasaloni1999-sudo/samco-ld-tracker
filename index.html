@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAMCO L&D — Partner Pipeline Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f4f1;color:#1a1a18;font-size:14px;min-height:100vh}
+/* ── TOP BAR ── */
+.topbar{background:#1a1a18;color:#fff;padding:13px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.topbar-title{font-size:16px;font-weight:700;letter-spacing:-.2px}
+.topbar-sub{font-size:11px;color:#aaa;margin-top:1px}
+.topbar-right{display:flex;gap:10px;align-items:center}
+.sync-badge{font-size:11px;display:flex;align-items:center;gap:5px;color:#aaa}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot-green{background:#22c55e}.dot-amber{background:#f59e0b}.dot-red{background:#ef4444}.dot-gray{background:#666}
+/* ── LAYOUT ── */
+.container{max-width:1120px;margin:0 auto;padding:22px 24px}
+/* ── TABS ── */
+.tab-bar{display:flex;gap:0;background:#fff;border-radius:10px 10px 0 0;padding:0 6px;border:1px solid #e5e4de;border-bottom:none;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.tab{padding:12px 20px;font-size:13px;cursor:pointer;border:none;border-bottom:3px solid transparent;color:#888;background:none;font-family:inherit;transition:color .15s}
+.tab:hover{color:#444}
+.tab.active{color:#1a1a18;border-bottom:3px solid #1a1a18;font-weight:600}
+.tab .bc{background:#ef4444;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:5px;font-weight:700}
+.panel{display:none;background:#fff;border-radius:0 0 10px 10px;padding:22px;border:1px solid #e5e4de;border-top:none;box-shadow:0 1px 3px rgba(0,0,0,.04)}.panel.active{display:block}
+/* ── METRICS ── */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.metric{background:#f8f8f5;border-radius:9px;padding:13px 15px;border:1px solid #eee}
+.metric-lbl{font-size:11px;color:#888;margin-bottom:4px;font-weight:500}
+.metric-val{font-size:24px;font-weight:700;color:#1a1a18;line-height:1}
+.metric-sub{font-size:10px;color:#aaa;margin-top:3px}
+.metric.red .metric-val,.metric.red .metric-lbl{color:#dc2626}
+.metric.green .metric-val{color:#16a34a}
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{font-size:11px;font-weight:600;color:#666;text-align:left;padding:8px 10px;border-bottom:1px solid #eee;background:#fafaf7;white-space:nowrap}
+tbody tr{border-bottom:1px solid #f0efe9;transition:background .1s}
+tbody tr:hover{background:#fafaf7}
+td{padding:8px 10px;vertical-align:middle}
+.no-rows{text-align:center;padding:28px;color:#aaa;font-size:13px}
+/* ── BADGES ── */
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:5px;font-weight:600;white-space:nowrap}
+.b-pending{background:#fef3c7;color:#92400e}
+.b-attended{background:#d1fae5;color:#065f46}
+.b-cleared{background:#dcfce7;color:#166534}
+.b-empanelled{background:#dbeafe;color:#1e40af}
+.b-active{background:#ede9fe;color:#4c1d95}
+.b-scheduled{background:#fce7f3;color:#831843}
+.b-auto{background:#d1fae5;color:#065f46}
+.b-manual{background:#f1f0ea;color:#666}
+.b-done{background:#dbeafe;color:#1e40af}
+/* ── BUTTONS ── */
+.btn{font-size:12px;padding:7px 14px;border:1px solid #e5e4de;border-radius:7px;background:#fff;color:#1a1a18;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;transition:background .1s}
+.btn:hover{background:#f5f5f2}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:#1a1a18;color:#fff;border-color:#1a1a18}
+.btn-primary:hover{background:#333}
+.btn-green{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
+.btn-green:hover{background:#dcfce7}
+.btn-blue{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.btn-blue:hover{background:#dbeafe}
+.btn-red{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.btn-sm{font-size:11px;padding:4px 10px}
+/* ── SECTION HEADER ── */
+.sec-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.sec-lbl{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.btn-row{display:flex;gap:7px;flex-wrap:wrap}
+/* ── FILTER ROW ── */
+.filter-row{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.filter-row label{font-size:11px;color:#888;font-weight:500}
+select,input[type=text],input[type=date],input[type=email],input[type=number],input[type=tel]{font-size:12px;padding:6px 10px;border:1px solid #e5e4de;border-radius:7px;background:#fff;color:#1a1a18;font-family:inherit;outline:none}
+select:focus,input:focus{border-color:#999}
+/* ── ADD FORM ── */
+.add-form{background:#f8f8f5;border-radius:9px;padding:14px;margin-bottom:16px;border:1px solid #eee;display:none}
+.add-form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+/* ── ALERTS ── */
+.alert{padding:11px 15px;border-radius:8px;font-size:12px;margin-bottom:14px;display:flex;align-items:center;gap:8px;border:1px solid}
+.alert-green{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
+.alert-amber{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.alert-red{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.alert-blue{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}
+/* ── REMINDER CARDS ── */
+.r-card{background:#fff;border:1px solid #e5e4de;border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.r-card.urgent{border-left:4px solid #ef4444}
+.r-card.warn{border-left:4px solid #f59e0b}
+.r-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+.r-name{font-size:13px;font-weight:600}
+.r-pill{font-size:11px;padding:2px 10px;border-radius:10px;font-weight:600}
+.r-pill.urgent{background:#fef2f2;color:#dc2626}
+.r-pill.warn{background:#fffbeb;color:#d97706}
+.r-meta{font-size:11px;color:#888;margin-bottom:10px;line-height:1.5}
+.r-acts{display:flex;gap:6px;flex-wrap:wrap}
+/* ── SEGMENTED ── */
+.seg{display:flex;border:1px solid #e5e4de;border-radius:8px;overflow:hidden;width:fit-content;margin-bottom:16px}
+.seg button{padding:6px 14px;font-size:12px;border:none;background:none;cursor:pointer;color:#888;font-family:inherit;border-right:1px solid #e5e4de}
+.seg button:last-child{border-right:none}
+.seg button.active{background:#1a1a18;color:#fff}
+/* ── NOTIFICATION ── */
+.notif{display:none;position:fixed;top:18px;right:18px;background:#1a1a18;color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:300;box-shadow:0 4px 20px rgba(0,0,0,.2);max-width:340px}
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:14px;padding:24px;width:480px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.18)}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:14px}
+.modal textarea{width:100%;font-size:12px;padding:10px;border:1px solid #e5e4de;border-radius:8px;background:#f8f8f5;color:#1a1a18;resize:vertical;min-height:120px;font-family:inherit;line-height:1.65}
+.modal-phone{font-size:11px;color:#888;margin-top:7px}
+.modal-acts{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+/* ── SETTINGS ── */
+.sbox{background:#fff;border:1px solid #e5e4de;border-radius:10px;padding:18px 20px;margin-bottom:14px}
+.sbox-title{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.sbox-sub{font-size:11px;color:#888;margin-bottom:12px;line-height:1.65}
+.howto{background:#f8f8f5;border:1px dashed #ddd;border-radius:10px;padding:15px 18px;margin-bottom:14px}
+.howto h4{font-size:12px;font-weight:700;margin-bottom:8px}
+.howto ol{font-size:11px;color:#666;line-height:2.1;padding-left:16px}
+.howto code{background:#eeede8;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:10px}
+.col-map{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+/* ── ARN TABLE ── */
+.arn-chip{display:inline-block;background:#ede9fe;color:#4c1d95;font-size:10px;padding:2px 7px;border-radius:4px;margin:1px;font-weight:600}
+/* ── KRA ── */
+.kra-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.kra-card{background:#fff;border:1px solid #e5e4de;border-radius:10px;padding:16px 18px}
+.kra-card h4{font-size:12px;font-weight:700;margin-bottom:12px;color:#444}
+/* ── DEPLOY STEPS ── */
+.step{display:flex;gap:12px;margin-bottom:16px;align-items:flex-start}
+.step-num{background:#1a1a18;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px}
+.step-content{flex:1}
+.step-title{font-size:13px;font-weight:600;margin-bottom:3px}
+.step-desc{font-size:11px;color:#666;line-height:1.65}
+.step-desc code{background:#f0efe9;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:10px}
+.copy-box{background:#1a1a18;color:#a3e635;font-family:monospace;font-size:11px;padding:10px 14px;border-radius:7px;margin-top:6px;cursor:pointer;user-select:all;word-break:break-all}
+/* ── PROGRESS BAR ── */
+.pbar-wrap{background:#f0efe9;border-radius:4px;height:6px;margin-top:4px}
+.pbar{background:#1a1a18;height:6px;border-radius:4px;transition:width .4s}
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  .metrics{grid-template-columns:1fr 1fr}
+  .kra-grid{grid-template-columns:1fr}
+  .container{padding:12px}
+  .tab{padding:10px 12px;font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">SAMCO L&D — Partner Pipeline Tracker</div>
+    <div class="topbar-sub">TPP Division · NISM Pathshala + Deep Dive Sessions</div>
+  </div>
+  <div class="topbar-right">
+    <span id="sync-status" class="sync-badge"><span class="dot dot-gray"></span>&nbsp;Not synced yet</span>
+    <button class="btn btn-sm" style="background:#2a2a28;border-color:#444;color:#ccc" onclick="syncBoth()"><i class="ti ti-refresh"></i> Sync all</button>
+    <button class="btn btn-sm" style="background:#2a2a28;border-color:#444;color:#ccc" onclick="exportAll()"><i class="ti ti-download"></i> Export</button>
+  </div>
+</div>
+
+<div class="container">
+
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('nism')"><i class="ti ti-certificate"></i> NISM Pathshala</button>
+  <button class="tab" onclick="switchTab('dd')"><i class="ti ti-school"></i> Deep Dive</button>
+  <button class="tab" onclick="switchTab('rem')"><i class="ti ti-bell"></i> Reminders <span id="rc" class="bc" style="display:none"></span></button>
+  <button class="tab" onclick="switchTab('kra')"><i class="ti ti-chart-bar"></i> KRA Overview</button>
+  <button class="tab" onclick="switchTab('deploy')"><i class="ti ti-rocket"></i> Deploy Guide</button>
+  <button class="tab" onclick="switchTab('cfg')"><i class="ti ti-settings"></i> Settings</button>
+</div>
+
+<!-- ══ NISM TAB ══════════════════════════════════════════════════════ -->
+<div id="tab-nism" class="panel active">
+  <div class="metrics" id="nism-metrics"></div>
+  <div class="sec-hdr">
+    <div class="sec-lbl">
+      Candidates <span id="nism-src" class="badge b-manual">manual</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green btn-sm" onclick="syncNism()"><i class="ti ti-refresh"></i> Sync from Google Form</button>
+      <button class="btn btn-primary btn-sm" onclick="toggleForm('nism')"><i class="ti ti-plus"></i> Add manually</button>
+    </div>
+  </div>
+
+  <div id="add-nism-form" class="add-form">
+    <div class="add-form-row">
+      <div class="field"><label>Candidate name *</label><input id="n-name" type="text" placeholder="Full name" style="width:145px"></div>
+      <div class="field"><label>BDM name *</label><input id="n-bdm" type="text" placeholder="BDM name" style="width:130px"></div>
+      <div class="field"><label>Mobile</label><input id="n-mob" type="tel" placeholder="10-digit" style="width:120px"></div>
+      <div class="field"><label>Email</label><input id="n-email" type="text" placeholder="email@example.com" style="width:170px"></div>
+      <div class="field"><label>Reg. date *</label><input id="n-date" type="date"></div>
+      <div class="field"><label>Status</label>
+        <select id="n-status">
+          <option value="registered">Registered</option>
+          <option value="attended">Attended webinar</option>
+          <option value="cleared">Cleared NISM exam</option>
+          <option value="empanelled">Got ARN &amp; empanelled</option>
+        </select>
+      </div>
+      <div class="field"><label>&nbsp;</label><button class="btn btn-primary" onclick="addNism()">Add</button></div>
+      <div class="field"><label>&nbsp;</label><button class="btn" onclick="toggleForm('nism')">Cancel</button></div>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <label>Filter:</label>
+    <select id="nf" onchange="renderNism()">
+      <option value="all">All candidates</option>
+      <option value="stuck">Stuck (&gt;threshold)</option>
+      <option value="registered">Registered</option>
+      <option value="attended">Attended</option>
+      <option value="cleared">Cleared exam</option>
+      <option value="empanelled">Empanelled ✓</option>
+    </select>
+    <input type="text" id="ns" placeholder="Search name / BDM / mobile…" oninput="renderNism()" style="width:220px">
+  </div>
+
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr>
+      <th>Candidate</th><th>BDM</th><th>Mobile</th><th>Reg. date</th>
+      <th>Status</th><th>Days at stage</th><th>ARN (manual)</th><th>Update</th><th>Remind BDM</th>
+    </tr></thead>
+    <tbody id="nism-body"></tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ══ DEEP DIVE TAB ══════════════════════════════════════════════════ -->
+<div id="tab-dd" class="panel">
+  <div class="metrics" id="dd-metrics"></div>
+  <div id="dd-batch" style="display:none"></div>
+
+  <div class="sec-hdr">
+    <div class="sec-lbl">
+      Partners <span id="dd-src" class="badge b-manual">manual</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green btn-sm" onclick="syncDD()"><i class="ti ti-refresh"></i> Sync from Google Form</button>
+      <button class="btn btn-primary btn-sm" onclick="toggleForm('dd')"><i class="ti ti-plus"></i> Add manually</button>
+    </div>
+  </div>
+
+  <div id="add-dd-form" class="add-form">
+    <div class="add-form-row">
+      <div class="field"><label>BDM name *</label><input id="d-bdm" type="text" placeholder="BDM name" style="width:130px"></div>
+      <div class="field"><label>ARN numbers (comma-sep) *</label><input id="d-arns" type="text" placeholder="e.g. 310836, 84272" style="width:200px"></div>
+      <div class="field"><label>Focus area</label><input id="d-focus" type="text" placeholder="e.g. MF, US stocks" style="width:150px"></div>
+      <div class="field"><label>Training date *</label><input id="d-date" type="date"></div>
+      <div class="field"><label>Status</label>
+        <select id="d-status">
+          <option value="pending">Submitted</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="attended">Attended</option>
+          <option value="active">Active (placed order)</option>
+        </select>
+      </div>
+      <div class="field"><label>&nbsp;</label><button class="btn btn-primary" onclick="addDD()">Add</button></div>
+      <div class="field"><label>&nbsp;</label><button class="btn" onclick="toggleForm('dd')">Cancel</button></div>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <label>Filter:</label>
+    <select id="df" onchange="renderDD()">
+      <option value="all">All partners</option>
+      <option value="pending">Submitted</option>
+      <option value="scheduled">Scheduled</option>
+      <option value="attended">Attended</option>
+      <option value="active">Active ✓</option>
+      <option value="stuck">Stuck (&gt;threshold)</option>
+    </select>
+    <input type="text" id="ds" placeholder="Search BDM / ARN…" oninput="renderDD()" style="width:200px">
+  </div>
+
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr>
+      <th>BDM</th><th>ARN numbers</th><th>Focus area</th>
+      <th>Training date</th><th>Status</th><th>Days at stage</th><th>Update</th><th>Remind BDM</th>
+    </tr></thead>
+    <tbody id="dd-body"></tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ══ REMINDERS TAB ══════════════════════════════════════════════════ -->
+<div id="tab-rem" class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:15px;font-weight:700">BDM Follow-up Queue</div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-sm" onclick="requestNotif()"><i class="ti ti-bell"></i> Enable browser alerts</button>
+      <button class="btn btn-sm" onclick="exportReminders()"><i class="ti ti-download"></i> Export list</button>
+    </div>
+  </div>
+  <div class="seg">
+    <button class="active" onclick="setRF('all',this)">All</button>
+    <button onclick="setRF('urgent',this)">🔴 Urgent</button>
+    <button onclick="setRF('warn',this)">🟡 Due soon</button>
+    <button onclick="setRF('nism',this)">NISM only</button>
+    <button onclick="setRF('dd',this)">Deep Dive only</button>
+  </div>
+  <div id="rem-list"></div>
+  <div style="margin-top:18px;background:#f8f8f5;border-radius:9px;padding:14px 16px;border:1px solid #eee">
+    <div style="font-size:12px;font-weight:700;margin-bottom:4px">Daily email digest</div>
+    <div style="font-size:11px;color:#888;margin-bottom:10px">Click below to email yourself today's stuck-partner list. Bookmark the link and open it every morning.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input type="email" id="digest-email" placeholder="your@samco.in" style="width:220px">
+      <button class="btn btn-primary" onclick="setupDigest()">Generate digest link</button>
+    </div>
+    <div id="digest-out" style="margin-top:8px;font-size:11px"></div>
+  </div>
+</div>
+
+<!-- ══ KRA OVERVIEW TAB ═══════════════════════════════════════════════ -->
+<div id="tab-kra" class="panel">
+  <div class="kra-grid">
+    <div class="kra-card">
+      <h4><i class="ti ti-certificate"></i> KRA 1 — Empanelment funnel</h4>
+      <div style="position:relative;height:210px"><canvas id="kra1c" role="img" aria-label="NISM funnel"></canvas></div>
+    </div>
+    <div class="kra-card">
+      <h4><i class="ti ti-school"></i> KRA 2 — Activation funnel</h4>
+      <div style="position:relative;height:210px"><canvas id="kra2c" role="img" aria-label="Deep dive funnel"></canvas></div>
+    </div>
+  </div>
+  <div class="kra-card" style="margin-bottom:16px">
+    <h4 style="margin-bottom:14px"><i class="ti ti-users"></i> BDM-wise performance</h4>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>BDM</th>
+        <th>NISM reg.</th><th>Attended</th><th>Empanelled</th><th>Emp. rate</th>
+        <th>DD submitted</th><th>Activated</th><th>Act. rate</th>
+      </tr></thead>
+      <tbody id="bdm-table"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DEPLOY GUIDE TAB ═══════════════════════════════════════════════ -->
+<div id="tab-deploy" class="panel">
+  <div style="font-size:15px;font-weight:700;margin-bottom:4px">Deploy to Netlify (Option 3) — Step by step</div>
+  <div style="font-size:12px;color:#888;margin-bottom:20px">Estimated time: 20 minutes. Result: a permanent URL like <code style="background:#f0efe9;padding:1px 5px;border-radius:3px">samco-ld.netlify.app</code> accessible from any device.</div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <div class="step-title">Download this file</div>
+      <div class="step-desc">Click the download button your advisor gave you to save <code>index.html</code> to your computer. Also download <code>netlify.toml</code>.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <div class="step-title">Create a GitHub account &amp; repository</div>
+      <div class="step-desc">Go to <strong>github.com</strong> → Sign up → New repository → Name it <code>samco-ld-tracker</code> → Public → Create repository.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <div class="step-title">Upload the file to GitHub</div>
+      <div class="step-desc">Inside your new repo → click <strong>Add file → Upload files</strong> → drag <code>index.html</code> and <code>netlify.toml</code> → click <strong>Commit changes</strong>.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <div class="step-title">Connect Netlify</div>
+      <div class="step-desc">Go to <strong>netlify.com</strong> → Sign up with GitHub → <strong>Add new site → Import an existing project → GitHub → select samco-ld-tracker</strong> → Deploy site. Done in 60 seconds.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-content">
+      <div class="step-title">Your live URL</div>
+      <div class="step-desc">Netlify gives you a URL like <code>random-name.netlify.app</code>. Go to <strong>Site settings → Change site name</strong> → rename to <code>samco-ld</code> → your URL becomes <code>samco-ld.netlify.app</code>. Share this with no one — it's your personal tracker.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-content">
+      <div class="step-title">Connect your Google Sheets</div>
+      <div class="step-desc">Open your live URL → go to <strong>Settings tab</strong> → paste your two published CSV URLs → Save → click Sync. From now on, every new form submission auto-appears in your tracker.</div>
+    </div>
+  </div>
+
+  <div class="alert alert-blue" style="margin-top:8px">
+    <i class="ti ti-info-circle"></i>
+    <span>Any time you want to update the app (new features), just replace <code>index.html</code> in GitHub. Netlify auto-redeploys in under 60 seconds.</span>
+  </div>
+</div>
+
+<!-- ══ SETTINGS TAB ═══════════════════════════════════════════════════ -->
+<div id="tab-cfg" class="panel">
+
+  <div class="howto">
+    <h4><i class="ti ti-info-circle"></i> How to get your Google Sheet published CSV URL (one-time setup)</h4>
+    <ol>
+      <li>Your Google Forms already have linked sheets — open the response sheet</li>
+      <li>Go to <strong>File → Share → Publish to web</strong></li>
+      <li>Select the <strong>Form Responses</strong> sheet tab → change format to <strong>CSV</strong> → click <strong>Publish</strong></li>
+      <li>Copy the URL — it looks like: <code>https://docs.google.com/spreadsheets/d/e/…/pub?gid=…&output=csv</code></li>
+      <li>Paste it below and click Save → then Test fetch</li>
+    </ol>
+  </div>
+
+  <div class="sbox">
+    <div class="sbox-title"><i class="ti ti-certificate" style="color:#1d4ed8"></i> NISM Pathshala — Google Sheet</div>
+    <div class="sbox-sub">
+      Sheet columns: <strong>A</strong>=Timestamp · <strong>B</strong>=BDM Name · <strong>C</strong>=Candidate Name · <strong>D</strong>=Mobile · <strong>E</strong>=Email · <strong>F</strong>=Attendance<br>
+      <span style="color:#888">Paste the published CSV URL below. The app will auto-map these columns.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="nism-url" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv" style="flex:1;min-width:260px">
+      <button class="btn btn-primary btn-sm" onclick="saveUrl('nism')">Save</button>
+      <button class="btn btn-green btn-sm" onclick="syncNism()"><i class="ti ti-refresh"></i> Test fetch</button>
+    </div>
+    <div id="nism-url-status" style="font-size:11px;margin-top:7px"></div>
+  </div>
+
+  <div class="sbox">
+    <div class="sbox-title"><i class="ti ti-school" style="color:#7c3aed"></i> Deep Dive — Google Sheet</div>
+    <div class="sbox-sub">
+      Sheet columns: <strong>A</strong>=Timestamp · <strong>B</strong>=BDM Name · <strong>C–G</strong>=ARN 1–5 · <strong>H</strong>=Additional ARNs · <strong>I</strong>=Focus area · <strong>J</strong>=Training date · <strong>K</strong>=Training status<br>
+      <span style="color:#888">Each row can have multiple ARNs. The app handles them automatically.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="dd-url" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv" style="flex:1;min-width:260px">
+      <button class="btn btn-primary btn-sm" onclick="saveUrl('dd')">Save</button>
+      <button class="btn btn-green btn-sm" onclick="syncDD()"><i class="ti ti-refresh"></i> Test fetch</button>
+    </div>
+    <div id="dd-url-status" style="font-size:11px;margin-top:7px"></div>
+  </div>
+
+  <div class="sbox">
+    <div class="sbox-title"><i class="ti ti-bell"></i> Reminder thresholds</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="field"><label style="font-size:11px">NISM stuck after (days)</label><input type="number" id="cfg-nt" value="30" style="width:80px;margin-top:4px"></div>
+      <div class="field"><label style="font-size:11px">Deep Dive stuck after (days)</label><input type="number" id="cfg-dt" value="14" style="width:80px;margin-top:4px"></div>
+      <div class="field"><label style="font-size:11px">Your name (for messages)</label><input type="text" id="cfg-name" value="L&amp;D Team, SAMCO Wealth" style="width:200px;margin-top:4px"></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveCfg()">Save settings</button>
+  </div>
+
+  <div class="sbox">
+    <div class="sbox-title"><i class="ti ti-database"></i> Data management</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="exportAll()"><i class="ti ti-download"></i> Export all data (CSV)</button>
+      <button class="btn btn-red btn-sm" onclick="clearData()"><i class="ti ti-trash"></i> Clear all data &amp; start fresh</button>
+    </div>
+    <div style="font-size:11px;color:#aaa;margin-top:8px">Data is saved in your browser's localStorage. It persists across sessions on the same device/browser.</div>
+  </div>
+
+</div>
+
+</div><!-- /container -->
+
+<!-- TOAST -->
+<div id="notif" class="notif"></div>
+
+<!-- MESSAGE MODAL -->
+<div id="msg-modal" class="modal-bg">
+  <div class="modal">
+    <h3 id="modal-title">Message preview</h3>
+    <textarea id="modal-text"></textarea>
+    <div class="modal-phone" id="modal-phone"></div>
+    <div class="modal-acts">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green" onclick="sendWA()"><i class="ti ti-brand-whatsapp"></i> Open WhatsApp</button>
+      <button class="btn btn-blue" onclick="sendMail()"><i class="ti ti-mail"></i> Open email</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG — pre-wired with your actual sheet URLs
+// ═══════════════════════════════════════════════════════════════
+const NISM_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS5Xvg5bFVRfepo4-CFC1nwwov8vW0hogAM8cW5ejhK29wWHXRn2JanJBW9UWCtL2m1ElLCgMaLD6cB/pub?gid=992153315&single=true&output=csv";
+const DD_CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQwDkeGyHq3REJVR3BTfzbyFpZ_K7UKIgEw1BOBhHA771vRwI00DbVww_iCIsl7WGdnwzkX7i7D2Hvi/pub?gid=360301415&single=true&output=csv";
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let nismData = JSON.parse(localStorage.getItem('nismData') || '[]');
+let ddData   = JSON.parse(localStorage.getItem('ddData')   || '[]');
+let cfg = JSON.parse(localStorage.getItem('cfg') || JSON.stringify({
+  nismThreshold: 30, ddThreshold: 14,
+  myName: 'L&D Team, SAMCO Wealth',
+  nismUrl: NISM_CSV_URL, ddUrl: DD_CSV_URL
+}));
+// Always keep URLs up to date
+cfg.nismUrl = cfg.nismUrl || NISM_CSV_URL;
+cfg.ddUrl   = cfg.ddUrl   || DD_CSV_URL;
+
+let nid = nismData.length ? Math.max(...nismData.map(r=>r.id))+1 : 1;
+let did = ddData.length   ? Math.max(...ddData.map(r=>r.id))+1   : 1;
+let rFilter = 'all';
+let modalPhone = '';
+let kra1C = null, kra2C = null;
+
+function save(){
+  localStorage.setItem('nismData', JSON.stringify(nismData));
+  localStorage.setItem('ddData',   JSON.stringify(ddData));
+  localStorage.setItem('cfg',      JSON.stringify(cfg));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+function days(d){ return Math.max(0, Math.floor((new Date() - new Date(d)) / 86400000)); }
+function stuckN(r){ return r.status !== 'empanelled' && days(r.date) > cfg.nismThreshold; }
+function stuckD(r){ return r.status !== 'active'     && days(r.date) > cfg.ddThreshold; }
+
+function sbadge(s){
+  const m = {registered:'b-pending',attended:'b-attended',cleared:'b-cleared',empanelled:'b-empanelled',active:'b-active',scheduled:'b-scheduled',pending:'b-pending',done:'b-done'};
+  const l = {registered:'Registered',attended:'Attended',cleared:'Cleared exam',empanelled:'Empanelled ✓',active:'Active ✓',scheduled:'Scheduled',pending:'Submitted',done:'Done ✓'};
+  return `<span class="badge ${m[s]||'b-pending'}">${l[s]||s}</span>`;
+}
+
+function parseCSVRow(row){
+  // Handle quoted fields with commas inside
+  const result = [];
+  let cur = '', inQ = false;
+  for(let i = 0; i < row.length; i++){
+    const c = row[i];
+    if(c === '"'){ inQ = !inQ; }
+    else if(c === ',' && !inQ){ result.push(cur.trim()); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+function parseDate(raw){
+  if(!raw) return new Date().toISOString().slice(0,10);
+  // DD/MM/YYYY HH:MM:SS or MM/DD/YYYY
+  const m1 = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(m1){
+    const yr = m1[3].length===2 ? '20'+m1[3] : m1[3];
+    // Google Forms exports as MM/DD/YYYY
+    return `${yr}-${m1[1].padStart(2,'0')}-${m1[2].padStart(2,'0')}`;
+  }
+  return new Date().toISOString().slice(0,10);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════════
+function switchTab(t){
+  const tabs = ['nism','dd','rem','kra','deploy','cfg'];
+  document.querySelectorAll('.tab').forEach((b,i) => b.classList.toggle('active', tabs[i]===t));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  if(t==='kra')    renderKRA();
+  if(t==='rem')    renderRem();
+  if(t==='cfg')    loadCfgUI();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NISM — SYNC FROM SHEET
+// ═══════════════════════════════════════════════════════════════
+// NISM columns: A=Timestamp B=BDM C=Candidate D=Mobile E=Email F=Attendance
+async function syncNism(){
+  const url = cfg.nismUrl || NISM_CSV_URL;
+  const statusEl = document.getElementById('nism-url-status');
+  setSyncStatus('amber', 'Syncing NISM…');
+  if(statusEl) { statusEl.textContent = 'Fetching…'; statusEl.style.color='#888'; }
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const text = await res.text();
+    const rows = text.trim().split('\n');
+    // Skip header row (row 0), also skip "Batch X" merged rows
+    let added = 0, updated = 0;
+    for(let i = 1; i < rows.length; i++){
+      const cells = parseCSVRow(rows[i]);
+      if(cells.length < 3) continue;
+      const ts       = cells[0]||'';
+      const bdm      = (cells[1]||'').trim();
+      const name     = (cells[2]||'').trim();
+      const mobile   = (cells[3]||'').trim();
+      const email    = (cells[4]||'').trim();
+      const attended = (cells[5]||'').trim().toLowerCase();
+      // Skip batch header rows
+      if(!name || name.toLowerCase().startsWith('batch')) continue;
+      const date = parseDate(ts);
+      const status = attended === 'attended' ? 'attended' : 'registered';
+      const existing = nismData.find(r => r.name.toLowerCase()===name.toLowerCase() && r.bdm.toLowerCase()===bdm.toLowerCase());
+      if(existing){
+        // Update attendance if sheet now says attended
+        if(status==='attended' && existing.status==='registered'){ existing.status='attended'; updated++; }
+      } else {
+        nismData.push({ id:nid++, name, bdm, mobile, email, date, status, arn:'', source:'auto' });
+        added++;
+      }
+    }
+    save(); renderNism(); updateRC();
+    setSyncStatus('green', 'NISM synced · '+new Date().toLocaleTimeString('en-IN'));
+    if(statusEl){ statusEl.textContent=`Done — ${added} new, ${updated} updated.`; statusEl.style.color='#166534'; }
+    toast(`NISM synced: ${added} new${updated?' · '+updated+' updated':''}`);
+  } catch(e){
+    setSyncStatus('red','Sync failed');
+    if(statusEl){ statusEl.textContent='Error: '+e.message; statusEl.style.color='#dc2626'; }
+    toast('Sync failed: '+e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEEP DIVE — SYNC FROM SHEET
+// ═══════════════════════════════════════════════════════════════
+// DD columns: A=Timestamp B=BDM C=ARN1 D=ARN2 E=ARN3 F=ARN4 G=ARN5 H=Additional I=Focus J=TrainingDate K=Status
+async function syncDD(){
+  const url = cfg.ddUrl || DD_CSV_URL;
+  const statusEl = document.getElementById('dd-url-status');
+  setSyncStatus('amber','Syncing Deep Dive…');
+  if(statusEl){ statusEl.textContent='Fetching…'; statusEl.style.color='#888'; }
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const text = await res.text();
+    const rows = text.trim().split('\n');
+    let added = 0, updated = 0;
+    for(let i = 1; i < rows.length; i++){
+      const cells = parseCSVRow(rows[i]);
+      if(cells.length < 2) continue;
+      const ts      = cells[0]||'';
+      const bdm     = (cells[1]||'').trim();
+      if(!bdm) continue;
+      // Collect all ARNs from columns C-G + H (additional)
+      const arnCols = [cells[2],cells[3],cells[4],cells[5],cells[6]].map(c=>(c||'').trim()).filter(Boolean);
+      const addl = (cells[7]||'').trim();
+      // Additional ARNs field may have multiple separated by spaces/newlines/commas
+      if(addl) addl.split(/[\s,\n]+/).forEach(a=>{ a=a.trim(); if(a) arnCols.push(a); });
+      const arns = [...new Set(arnCols.filter(a => /\d{4,}/.test(a)))]; // only numeric ARNs
+      const focus = (cells[8]||'').trim();
+      const tdate = cells[9] ? parseDate(cells[9]) : parseDate(ts);
+      const tstatus = (cells[10]||'').trim().toLowerCase();
+      const status = tstatus==='done' ? 'done' : 'pending';
+      if(!arns.length) continue;
+      // Match by BDM + first ARN
+      const key = bdm.toLowerCase()+'_'+arns[0];
+      const existing = ddData.find(r => (r.bdm.toLowerCase()+'_'+r.arns[0])===key);
+      if(existing){
+        if(status==='done' && existing.status==='pending'){ existing.status='attended'; updated++; }
+        // Merge any new ARNs
+        arns.forEach(a=>{ if(!existing.arns.includes(a)) existing.arns.push(a); });
+      } else {
+        ddData.push({ id:did++, bdm, arns, focus, date:tdate, status, source:'auto' });
+        added++;
+      }
+    }
+    save(); renderDD(); updateRC();
+    setSyncStatus('green','Deep Dive synced · '+new Date().toLocaleTimeString('en-IN'));
+    if(statusEl){ statusEl.textContent=`Done — ${added} new, ${updated} updated.`; statusEl.style.color='#166534'; }
+    toast(`Deep Dive synced: ${added} new${updated?' · '+updated+' updated':''}`);
+  } catch(e){
+    setSyncStatus('red','Sync failed');
+    if(statusEl){ statusEl.textContent='Error: '+e.message; statusEl.style.color='#dc2626'; }
+    toast('Sync failed: '+e.message);
+  }
+}
+
+async function syncBoth(){ await syncNism(); await syncDD(); }
+
+function setSyncStatus(color, msg){
+  document.getElementById('sync-status').innerHTML = `<span class="dot dot-${color}"></span>&nbsp;${msg}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NISM RENDER
+// ═══════════════════════════════════════════════════════════════
+function renderNism(){
+  const fv = document.getElementById('nf').value;
+  const sv = (document.getElementById('ns').value||'').toLowerCase();
+  const rows = nismData.filter(r=>{
+    if(fv==='stuck') return stuckN(r);
+    if(fv!=='all' && r.status!==fv) return false;
+    return !sv || r.name.toLowerCase().includes(sv) || r.bdm.toLowerCase().includes(sv) || (r.mobile||'').includes(sv);
+  });
+  const tbody = document.getElementById('nism-body');
+  tbody.innerHTML = rows.length ? rows.map(r => {
+    const d = days(r.date), stuck = stuckN(r);
+    const selOpts = [['registered','Registered'],['attended','Attended'],['cleared','Cleared exam'],['empanelled','Empanelled']].map(([v,l])=>`<option value="${v}"${r.status===v?' selected':''}>${l}</option>`).join('');
+    return `<tr>
+      <td><strong>${r.name}</strong>${stuck?'<span style="color:#ef4444;margin-left:4px">⚠</span>':''}<br><span class="badge ${r.source==='auto'?'b-auto':'b-manual'}">${r.source==='auto'?'auto':'manual'}</span></td>
+      <td>${r.bdm}</td>
+      <td style="font-size:11px;color:#666">${r.mobile||'—'}</td>
+      <td style="white-space:nowrap;font-size:11px">${r.date}</td>
+      <td>${sbadge(r.status)}</td>
+      <td><span style="font-size:11px;font-weight:${stuck?700:400};color:${stuck?'#dc2626':'#aaa'}">${d}d${stuck?' ⚠':''}</span></td>
+      <td><input type="text" value="${r.arn||''}" placeholder="e.g. 310836" style="width:90px;font-size:11px;padding:3px 6px" onchange="updateARN(${r.id},this.value)" title="Enter ARN after checking DRM"></td>
+      <td><select onchange="updateNismStatus(${r.id},this.value)" style="font-size:11px;padding:3px 6px;border:1px solid #ddd;border-radius:5px;background:#fff">${selOpts}</select></td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-green btn-sm" onclick="openMsg('${esc(r.name)}','${esc(r.bdm)}','${r.mobile||''}','${r.status}','nism','wa')" title="WhatsApp BDM"><i class="ti ti-brand-whatsapp"></i></button>
+        <button class="btn btn-blue btn-sm" onclick="openMsg('${esc(r.name)}','${esc(r.bdm)}','${r.mobile||''}','${r.status}','nism','email')" title="Email BDM"><i class="ti ti-mail"></i></button>
+      </div></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="9" class="no-rows">No candidates match this filter.</td></tr>`;
+
+  const total=nismData.length, att=nismData.filter(r=>['attended','cleared','empanelled'].includes(r.status)).length;
+  const emp=nismData.filter(r=>r.status==='empanelled').length, stuck=nismData.filter(stuckN).length;
+  document.getElementById('nism-metrics').innerHTML=`
+    <div class="metric"><div class="metric-lbl">Total registered</div><div class="metric-val">${total}</div><div class="metric-sub">across all BDMs</div></div>
+    <div class="metric"><div class="metric-lbl">Attended webinar</div><div class="metric-val">${att}</div>
+      <div class="metric-sub">${total?Math.round(att/total*100):0}%</div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${total?Math.round(att/total*100):0}%"></div></div></div>
+    <div class="metric ${emp>0?'green':''}"><div class="metric-lbl">Empanelled (KRA 1)</div><div class="metric-val">${emp}</div>
+      <div class="metric-sub">${total?Math.round(emp/total*100):0}% conversion</div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${total?Math.round(emp/total*100):0}%"></div></div></div>
+    <div class="metric ${stuck>0?'red':''}"><div class="metric-lbl">Stuck (&gt;${cfg.nismThreshold}d)</div><div class="metric-val">${stuck}</div><div class="metric-sub">${stuck?'need BDM follow-up':'all on track ✓'}</div></div>`;
+
+  const ha = nismData.some(r=>r.source==='auto');
+  const t = document.getElementById('nism-src'); t.className='badge '+(ha?'b-auto':'b-manual'); t.textContent=ha?'auto-synced':'manual';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEEP DIVE RENDER
+// ═══════════════════════════════════════════════════════════════
+function renderDD(){
+  const fv = document.getElementById('df').value;
+  const sv = (document.getElementById('ds').value||'').toLowerCase();
+  const rows = ddData.filter(r=>{
+    if(fv==='stuck') return stuckD(r);
+    if(fv!=='all' && r.status!==fv) return false;
+    return !sv || r.bdm.toLowerCase().includes(sv) || (r.arns||[]).some(a=>a.includes(sv));
+  });
+  const tbody = document.getElementById('dd-body');
+  tbody.innerHTML = rows.length ? rows.map(r => {
+    const d = days(r.date), stuck = stuckD(r);
+    const arnChips = (r.arns||[]).map(a=>`<span class="arn-chip">${a}</span>`).join('');
+    const selOpts = [['pending','Submitted'],['scheduled','Scheduled'],['attended','Attended'],['active','Active ✓']].map(([v,l])=>`<option value="${v}"${r.status===v?' selected':''}>${l}</option>`).join('');
+    return `<tr>
+      <td><strong>${r.bdm}</strong>${stuck?'<span style="color:#ef4444;margin-left:4px">⚠</span>':''}<br><span class="badge ${r.source==='auto'?'b-auto':'b-manual'}">${r.source==='auto'?'auto':'manual'}</span></td>
+      <td style="max-width:200px">${arnChips}</td>
+      <td style="font-size:11px;color:#666;max-width:150px">${r.focus||'—'}</td>
+      <td style="white-space:nowrap;font-size:11px">${r.date}</td>
+      <td>${sbadge(r.status)}</td>
+      <td><span style="font-size:11px;font-weight:${stuck?700:400};color:${stuck?'#dc2626':'#aaa'}">${d}d${stuck?' ⚠':''}</span></td>
+      <td><select onchange="updateDDStatus(${r.id},this.value)" style="font-size:11px;padding:3px 6px;border:1px solid #ddd;border-radius:5px;background:#fff">${selOpts}</select></td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-green btn-sm" onclick="openMsg('ARN: ${(r.arns||[]).join(', ')}','${esc(r.bdm)}','','${r.status}','dd','wa')" title="WhatsApp BDM"><i class="ti ti-brand-whatsapp"></i></button>
+        <button class="btn btn-blue btn-sm" onclick="openMsg('ARN: ${(r.arns||[]).join(', ')}','${esc(r.bdm)}','','${r.status}','dd','email')" title="Email BDM"><i class="ti ti-mail"></i></button>
+      </div></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8" class="no-rows">No partners match this filter.</td></tr>`;
+
+  const pending = ddData.filter(r=>r.status==='pending').length;
+  const ba = document.getElementById('dd-batch');
+  if(pending>=5){ ba.style.display='flex'; ba.className='alert alert-green'; ba.innerHTML=`<i class="ti ti-calendar-check"></i><span><strong>${pending} pending submissions</strong> — you have enough to schedule a batch deep dive session now!</span>`; }
+  else if(pending>0){ ba.style.display='flex'; ba.className='alert alert-amber'; ba.innerHTML=`<i class="ti ti-clock"></i><span><strong>${pending} pending</strong> — need ${5-pending} more to run a batch session.</span>`; }
+  else { ba.style.display='none'; }
+
+  const total=ddData.length, att=ddData.filter(r=>['attended','active'].includes(r.status)).length;
+  const act=ddData.filter(r=>r.status==='active').length, stuck=ddData.filter(stuckD).length;
+  document.getElementById('dd-metrics').innerHTML=`
+    <div class="metric"><div class="metric-lbl">In pipeline</div><div class="metric-val">${total}</div><div class="metric-sub">total submissions</div></div>
+    <div class="metric"><div class="metric-lbl">Awaiting batch</div><div class="metric-val">${pending}</div><div class="metric-sub">need 5 to schedule</div></div>
+    <div class="metric ${act>0?'green':''}"><div class="metric-lbl">Activated (KRA 2)</div><div class="metric-val">${act}</div>
+      <div class="metric-sub">${total?Math.round(act/total*100):0}% rate</div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${total?Math.round(act/total*100):0}%"></div></div></div>
+    <div class="metric ${stuck>0?'red':''}"><div class="metric-lbl">Stuck (&gt;${cfg.ddThreshold}d)</div><div class="metric-val">${stuck}</div><div class="metric-sub">${stuck?'need follow-up':'all on track ✓'}</div></div>`;
+
+  const ha = ddData.some(r=>r.source==='auto');
+  const t = document.getElementById('dd-src'); t.className='badge '+(ha?'b-auto':'b-manual'); t.textContent=ha?'auto-synced':'manual';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MUTATIONS
+// ═══════════════════════════════════════════════════════════════
+function updateNismStatus(id,v){ const r=nismData.find(r=>r.id===id); if(r){r.status=v;} save();renderNism();updateRC(); }
+function updateDDStatus(id,v){   const r=ddData.find(r=>r.id===id);   if(r){r.status=v;} save();renderDD();updateRC(); }
+function updateARN(id,v){ const r=nismData.find(r=>r.id===id); if(r){r.arn=v.trim(); if(v.trim()) r.status='cleared';} save(); renderNism(); }
+
+function toggleForm(t){ const el=document.getElementById('add-'+t+'-form'); el.style.display=el.style.display==='none'||!el.style.display?'block':'none'; }
+
+function addNism(){
+  const name=document.getElementById('n-name').value.trim();
+  const bdm=document.getElementById('n-bdm').value.trim();
+  const date=document.getElementById('n-date').value;
+  if(!name||!date){ toast('Fill name and date.'); return; }
+  nismData.push({id:nid++,name,bdm:bdm||'—',mobile:document.getElementById('n-mob').value.trim(),email:document.getElementById('n-email').value.trim(),date,status:document.getElementById('n-status').value,arn:'',source:'manual'});
+  ['n-name','n-bdm','n-mob','n-email','n-date'].forEach(i=>document.getElementById(i).value='');
+  save(); renderNism(); updateRC(); toast('Candidate added.');
+}
+
+function addDD(){
+  const bdm=document.getElementById('d-bdm').value.trim();
+  const arnsRaw=document.getElementById('d-arns').value.trim();
+  const date=document.getElementById('d-date').value;
+  if(!bdm||!arnsRaw||!date){ toast('Fill BDM, ARNs, and date.'); return; }
+  const arns=arnsRaw.split(/[\s,]+/).filter(Boolean);
+  ddData.push({id:did++,bdm,arns,focus:document.getElementById('d-focus').value.trim(),date,status:document.getElementById('d-status').value,source:'manual'});
+  ['d-bdm','d-arns','d-focus','d-date'].forEach(i=>document.getElementById(i).value='');
+  save(); renderDD(); updateRC(); toast('Partner added.');
+}
+
+function esc(s){ return (s||'').replace(/'/g,"\\'"); }
+
+// ═══════════════════════════════════════════════════════════════
+// REMINDERS
+// ═══════════════════════════════════════════════════════════════
+function getReminders(){
+  const list=[];
+  nismData.forEach(r=>{ const d=days(r.date); if(r.status!=='empanelled'&&d>cfg.ddThreshold) list.push({...r,pipeline:'NISM',days:d,urgent:d>cfg.nismThreshold}); });
+  ddData.forEach(r=>{   const d=days(r.date); if(r.status!=='active'&&d>cfg.ddThreshold)     list.push({...r,pipeline:'Deep Dive',days:d,urgent:d>cfg.ddThreshold*2}); });
+  return list.sort((a,b)=>b.days-a.days);
+}
+function setRF(f,btn){ rFilter=f; document.querySelectorAll('.seg button').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderRem(); }
+function updateRC(){ const n=getReminders().length; const e=document.getElementById('rc'); e.textContent=n||''; e.style.display=n?'inline':'none'; }
+
+function renderRem(){
+  let items=getReminders();
+  if(rFilter==='urgent') items=items.filter(r=>r.urgent);
+  else if(rFilter==='warn') items=items.filter(r=>!r.urgent);
+  else if(rFilter==='nism') items=items.filter(r=>r.pipeline==='NISM');
+  else if(rFilter==='dd')   items=items.filter(r=>r.pipeline==='Deep Dive');
+  const el=document.getElementById('rem-list');
+  if(!items.length){ el.innerHTML='<div style="text-align:center;padding:2.5rem;color:#aaa;font-size:13px">✓ No follow-ups needed right now. All partners are on track.</div>'; return; }
+  const nameOrARN = r => r.pipeline==='NISM' ? r.name : 'ARNs: '+(r.arns||[]).join(', ');
+  el.innerHTML=items.map(r=>`
+    <div class="r-card ${r.urgent?'urgent':'warn'}">
+      <div class="r-hdr">
+        <div class="r-name">${nameOrARN(r)} <span style="font-weight:400;color:#888;font-size:12px">· BDM: ${r.bdm}</span></div>
+        <span class="r-pill ${r.urgent?'urgent':'warn'}">${r.days}d stuck</span>
+      </div>
+      <div class="r-meta">${r.pipeline} pipeline · Status: <strong>${r.status}</strong> · Since: ${r.date}</div>
+      <div class="r-acts">
+        <button class="btn btn-green btn-sm" onclick="openMsg('${esc(nameOrARN(r))}','${esc(r.bdm)}','${r.mobile||''}','${r.status}','${r.pipeline==='NISM'?'nism':'dd'}','wa')"><i class="ti ti-brand-whatsapp"></i> WhatsApp ${r.bdm}</button>
+        <button class="btn btn-blue btn-sm" onclick="openMsg('${esc(nameOrARN(r))}','${esc(r.bdm)}','${r.mobile||''}','${r.status}','${r.pipeline==='NISM'?'nism':'dd'}','email')"><i class="ti ti-mail"></i> Email ${r.bdm}</button>
+      </div>
+    </div>`).join('');
+  updateRC();
+}
+
+function exportReminders(){
+  const items=getReminders();
+  const csv='Name/ARN,BDM,Pipeline,Status,Days stuck\n'+items.map(r=>`"${r.name||r.arns}","${r.bdm}","${r.pipeline}","${r.status}","${r.days}"`).join('\n');
+  dlFile('followups_'+today()+'.csv','text/csv',csv);
+}
+
+function setupDigest(){
+  const email=document.getElementById('digest-email').value.trim();
+  if(!email){ toast('Enter your email first.'); return; }
+  const stuck=getReminders();
+  const body=stuck.length
+    ? `Daily L&D Pipeline Update\n\n${stuck.map(r=>`• ${r.name||r.arns} (${r.bdm}) — ${r.pipeline} — ${r.status} — ${r.days} days stuck`).join('\n')}\n\nTotal: ${stuck.length} partner(s) need follow-up.\n\nOpen your tracker to send reminders.`
+    : 'All partners are on track today. No follow-ups needed. ✓';
+  const href=`mailto:${email}?subject=${encodeURIComponent('SAMCO L&D — Pipeline update '+new Date().toLocaleDateString('en-IN'))}&body=${encodeURIComponent(body)}`;
+  document.getElementById('digest-out').innerHTML=`<a href="${href}" style="color:#1d4ed8;font-weight:600">→ Click to send today's digest email</a><br><span style="color:#aaa">Bookmark this page and click every morning for an updated digest.</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MESSAGE MODAL
+// ═══════════════════════════════════════════════════════════════
+function openMsg(nameOrARN, bdm, phone, status, type, mode){
+  const nCtx={registered:'registered for the NISM Pathshala webinar but has not yet attended',attended:'attended the webinar but has not cleared the NISM exam yet',cleared:'cleared the NISM exam but has not yet obtained ARN / been empanelled'};
+  const dCtx={pending:'submitted the Deep Dive form but the session has not been scheduled yet',scheduled:'been scheduled for a Deep Dive session but has not attended',attended:'attended the Deep Dive session but has not placed an order yet'};
+  const ctx=(type==='nism'?nCtx:dCtx)[status]||'been in the pipeline without recent progress';
+  const sender=cfg.myName||'L&D Team, SAMCO Wealth';
+  const waMsg=`Hi ${bdm},\n\nQuick follow-up on *${nameOrARN}*.\n\nThey have ${ctx}. Could you please connect with them and share a status update?\n\nThank you!\n— ${sender}`;
+  const subject=`Follow-up — ${nameOrARN} (${type==='nism'?'NISM Pathshala':'Deep Dive'})`;
+  const mailMsg=`Hi ${bdm},\n\nThis is a follow-up regarding ${nameOrARN}, who has ${ctx}.\n\nCould you please connect with them and share an update? This helps us track our KRAs accurately.\n\nBest regards,\n${sender}`;
+  document.getElementById('modal-title').textContent = mode==='email'?`Draft email to ${bdm}`:`WhatsApp message to ${bdm}`;
+  document.getElementById('modal-text').value = mode==='email'?`Subject: ${subject}\n\n${mailMsg}`:waMsg;
+  document.getElementById('modal-phone').textContent = phone?`Candidate mobile on file: ${phone}`:'No mobile saved for this candidate.';
+  modalPhone=phone;
+  document.getElementById('msg-modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('msg-modal').classList.remove('open'); }
+function sendWA(){
+  const txt=encodeURIComponent(document.getElementById('modal-text').value);
+  const num=(modalPhone||'').replace(/\D/g,'');
+  window.open(num?`https://wa.me/${num}?text=${txt}`:`https://wa.me/?text=${txt}`,'_blank');
+  closeModal();
+}
+function sendMail(){
+  const txt=document.getElementById('modal-text').value;
+  const lines=txt.split('\n'); const sub=lines[0].replace('Subject: ',''); const body=lines.slice(2).join('\n');
+  window.open(`mailto:?subject=${encodeURIComponent(sub)}&body=${encodeURIComponent(body)}`,'_blank');
+  closeModal();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KRA OVERVIEW
+// ═══════════════════════════════════════════════════════════════
+function renderKRA(){
+  const n1=nismData.length, n2=nismData.filter(r=>['attended','cleared','empanelled'].includes(r.status)).length;
+  const n3=nismData.filter(r=>['cleared','empanelled'].includes(r.status)).length, n4=nismData.filter(r=>r.status==='empanelled').length;
+  if(kra1C) kra1C.destroy();
+  kra1C=new Chart(document.getElementById('kra1c'),{type:'bar',data:{labels:['Registered','Attended','Cleared','Empanelled'],datasets:[{data:[n1,n2,n3,n4],backgroundColor:['#bfdbfe','#bbf7d0','#dcfce7','#c4b5fd'],borderRadius:6,label:'Candidates'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{stepSize:1}},y:{grid:{display:false}}}}});
+
+  const d1=ddData.length, d2=ddData.filter(r=>['scheduled','attended','active'].includes(r.status)).length;
+  const d3=ddData.filter(r=>['attended','active'].includes(r.status)).length, d4=ddData.filter(r=>r.status==='active').length;
+  if(kra2C) kra2C.destroy();
+  kra2C=new Chart(document.getElementById('kra2c'),{type:'bar',data:{labels:['Submitted','Scheduled','Attended','Active'],datasets:[{data:[d1,d2,d3,d4],backgroundColor:['#fbcfe8','#fde68a','#bbf7d0','#ddd6fe'],borderRadius:6,label:'Partners'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{display:false},ticks:{stepSize:1}}}}});
+
+  const bdms={};
+  nismData.forEach(r=>{ if(!bdms[r.bdm])bdms[r.bdm]={nr:0,na:0,ne:0,dd:0,da:0}; bdms[r.bdm].nr++; if(['attended','cleared','empanelled'].includes(r.status))bdms[r.bdm].na++; if(r.status==='empanelled')bdms[r.bdm].ne++; });
+  ddData.forEach(r=>{ if(!bdms[r.bdm])bdms[r.bdm]={nr:0,na:0,ne:0,dd:0,da:0}; bdms[r.bdm].dd++; if(r.status==='active')bdms[r.bdm].da++; });
+  document.getElementById('bdm-table').innerHTML=Object.entries(bdms).sort((a,b)=>b[1].nr-a[1].nr).map(([bdm,v])=>`<tr>
+    <td><strong>${bdm}</strong></td>
+    <td>${v.nr}</td><td>${v.na}</td><td>${v.ne}</td>
+    <td><span class="badge ${v.nr&&(v.ne/v.nr)>=.5?'b-empanelled':'b-pending'}">${v.nr?Math.round(v.ne/v.nr*100):0}%</span></td>
+    <td>${v.dd}</td><td>${v.da}</td>
+    <td><span class="badge ${v.dd&&(v.da/v.dd)>=.5?'b-active':'b-pending'}">${v.dd?Math.round(v.da/v.dd*100):0}%</span></td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════
+function loadCfgUI(){
+  document.getElementById('nism-url').value = cfg.nismUrl||NISM_CSV_URL;
+  document.getElementById('dd-url').value   = cfg.ddUrl||DD_CSV_URL;
+  document.getElementById('cfg-nt').value   = cfg.nismThreshold;
+  document.getElementById('cfg-dt').value   = cfg.ddThreshold;
+  document.getElementById('cfg-name').value = cfg.myName;
+}
+function saveUrl(t){
+  const url=document.getElementById(t+'-url').value.trim();
+  if(t==='nism') cfg.nismUrl=url; else cfg.ddUrl=url;
+  save(); toast('URL saved.'); loadCfgUI();
+}
+function saveCfg(){
+  cfg.nismThreshold = parseInt(document.getElementById('cfg-nt').value)||30;
+  cfg.ddThreshold   = parseInt(document.getElementById('cfg-dt').value)||14;
+  cfg.myName        = document.getElementById('cfg-name').value;
+  save(); renderNism(); renderDD(); updateRC(); toast('Settings saved.');
+}
+function clearData(){
+  if(!confirm('This will delete ALL partner data. Are you sure?')) return;
+  nismData=[]; ddData=[]; save(); renderNism(); renderDD(); updateRC(); toast('All data cleared.');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════
+function exportAll(){
+  const n = nismData.map(r=>`"${r.name}","${r.bdm}","${r.mobile||''}","${r.email||''}","${r.date}","${r.status}","${r.arn||''}","NISM","${r.source}"`).join('\n');
+  const d = ddData.map(r=>`"${(r.arns||[]).join('/')}","${r.bdm}","","","${r.date}","${r.status}","","Deep Dive","${r.source}"`).join('\n');
+  dlFile('samco_ld_'+today()+'.csv','text/csv','Name/ARN,BDM,Mobile,Email,Date,Status,ARN,Pipeline,Source\n'+n+'\n'+d);
+}
+function dlFile(name,mime,content){ const a=document.createElement('a');a.href='data:'+mime+','+encodeURIComponent(content);a.download=name;a.click(); }
+function today(){ return new Date().toISOString().slice(0,10); }
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATIONS & TOAST
+// ═══════════════════════════════════════════════════════════════
+function requestNotif(){
+  if(!('Notification' in window)){ toast('Browser notifications not supported here.'); return; }
+  Notification.requestPermission().then(p=>{
+    if(p==='granted'){
+      const u=getReminders().filter(r=>r.urgent);
+      if(u.length) new Notification('SAMCO L&D — Action needed',{body:`${u.length} partner(s) urgently need BDM follow-up.`});
+      toast('Browser notifications enabled!');
+    } else toast('Permission denied. Use WhatsApp/email reminders.');
+  });
+}
+let toastT;
+function toast(msg){ const el=document.getElementById('notif'); el.textContent=msg; el.style.display='block'; clearTimeout(toastT); toastT=setTimeout(()=>el.style.display='none',3200); }
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+loadCfgUI();
+renderNism();
+renderDD();
+updateRC();
+// Auto-sync on load if URLs are present
+if(cfg.nismUrl || cfg.ddUrl){ syncBoth(); }
+</script>
+</body>
+</html>
