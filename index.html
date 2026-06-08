@@ -307,10 +307,11 @@ select:focus,input:focus{border-color:#999}
 <!-- ══ MESSAGE TEMPLATES TAB ════════════════════════════════════════ -->
 <div id="tab-tmpl" class="panel">
   <div style="font-size:13px;font-weight:700;margin-bottom:4px">Message Templates</div>
-  <div style="font-size:11px;color:#888;margin-bottom:16px">Edit the WhatsApp and email templates for each pipeline stage. Use <code style="background:#f0efe9;padding:1px 4px;border-radius:3px">{name}</code>, <code style="background:#f0efe9;padding:1px 4px;border-radius:3px">{bdm}</code>, <code style="background:#f0efe9;padding:1px 4px;border-radius:3px">{arn}</code>, <code style="background:#f0efe9;padding:1px 4px;border-radius:3px">{sender}</code> as placeholders.</div>
+  <div style="font-size:11px;color:#888;margin-bottom:14px">Use <code style="background:#f0efe9;padding:1px 4px;border-radius:3px">{name}</code>, <code style="background:#f0efe9;padding:1px 4px;border-radius:3px">{bdm}</code>, <code style="background:#f0efe9;padding:1px 4px;border-radius:3px">{arn}</code>, <code style="background:#f0efe9;padding:1px 4px;border-radius:3px">{days}</code>, <code style="background:#f0efe9;padding:1px 4px;border-radius:3px">{sender}</code> as placeholders.</div>
   <div class="msg-tmpl-tabs">
-    <button class="msg-tmpl-tab active" onclick="switchTmplTab('nism',this)">NISM Templates</button>
-    <button class="msg-tmpl-tab" onclick="switchTmplTab('dd',this)">Deep Dive Templates</button>
+    <button class="msg-tmpl-tab active" onclick="switchTmplTab('nism',this)">NISM Reminders</button>
+    <button class="msg-tmpl-tab" onclick="switchTmplTab('dd',this)">Deep Dive Reminders</button>
+    <button class="msg-tmpl-tab" onclick="switchTmplTab('seq',this)">⏱ Follow-up Sequences</button>
   </div>
   <div id="tmpl-nism-panel">
     <div id="nism-tmpl-list"></div>
@@ -318,8 +319,15 @@ select:focus,input:focus{border-color:#999}
   <div id="tmpl-dd-panel" style="display:none">
     <div id="dd-tmpl-list"></div>
   </div>
+  <div id="tmpl-seq-panel" style="display:none">
+    <div class="alert alert-blue" style="margin-bottom:14px">
+      <i class="ti ti-info-circle"></i>
+      <span>These are <strong>escalating follow-up messages</strong> sent to BDMs when a candidate is stuck at a stage for too long. The Reminders tab automatically picks the right message based on how many days have passed. Day 10 = gentle nudge · Day 20 = firmer ask · Day 30 = urgent escalation.</span>
+    </div>
+    <div id="seq-list"></div>
+  </div>
   <div style="margin-top:12px;display:flex;gap:8px">
-    <button class="btn btn-primary" onclick="saveTmpls()">Save all templates</button>
+    <button class="btn btn-primary" onclick="saveAllTmpls()">Save all templates</button>
     <button class="btn" onclick="resetTmpls()">Reset to defaults</button>
   </div>
 </div>
@@ -926,18 +934,24 @@ function renderRem(){
   else if(rFilter==='dd')   items=items.filter(r=>r.pipeline==='Deep Dive');
   const el=document.getElementById('rem-list');
   if(!items.length){ el.innerHTML='<div style="text-align:center;padding:2rem;color:#aaa;font-size:13px">✓ No follow-ups needed. All partners are on track.</div>'; return; }
-  el.innerHTML=items.map(r=>`
-    <div class="r-card ${r.urgent?'urgent':'warn'}">
+  el.innerHTML=items.map(r=>{
+    const pipeline = r.pipeline==='NISM'?'nism':'dd';
+    const seqMatch = getBestReminder(r, pipeline);
+    const escalationBadge = seqMatch
+      ? `<span style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;font-size:9px;padding:1px 6px;color:#92400e;font-weight:700;margin-left:6px">Day ${seqMatch.interval.days} escalation</span>`
+      : '';
+    return `<div class="r-card ${r.urgent?'urgent':'warn'}">
       <div class="r-hdr">
-        <div class="r-name">${r.name||r.arn} <span style="font-weight:400;color:#888;font-size:11px">· BDM: ${r.bdm}</span></div>
+        <div class="r-name">${r.name||r.arn}${escalationBadge} <span style="font-weight:400;color:#888;font-size:11px">· BDM: ${r.bdm}</span></div>
         <span class="r-pill ${r.urgent?'urgent':'warn'}">${r.daysStuck}d stuck</span>
       </div>
-      <div class="r-meta">${r.pipeline} · Stage: ${r.status} · Since: ${r.stageDate||r.date}</div>
+      <div class="r-meta">${r.pipeline} · Stage: <strong>${r.status}</strong> · Since: ${r.stageDate||r.date}</div>
       <div class="r-acts">
-        <button class="btn btn-green btn-sm" onclick="openRemind(${r.id},'${r.pipeline==='NISM'?'nism':'dd'}','wa')"><i class="ti ti-brand-whatsapp"></i> WhatsApp ${r.bdm}</button>
-        <button class="btn btn-blue btn-sm" onclick="openRemind(${r.id},'${r.pipeline==='NISM'?'nism':'dd'}','email')"><i class="ti ti-mail"></i> Email ${r.bdm}</button>
+        <button class="btn btn-green btn-sm" onclick="openRemind(${r.id},'${pipeline}','wa')"><i class="ti ti-brand-whatsapp"></i> WhatsApp ${r.bdm}</button>
+        <button class="btn btn-blue btn-sm" onclick="openRemind(${r.id},'${pipeline}','email')"><i class="ti ti-mail"></i> Email ${r.bdm}</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   updateRC();
 }
 
@@ -962,13 +976,32 @@ function setupDigest(){
 function openRemind(id, type, mode){
   const r = type==='nism' ? nismData.find(x=>x.id===id) : ddData.find(x=>x.id===id);
   if(!r){ toast('Record not found.'); return; }
-  const tmplSet = type==='nism' ? (tmpls.nism||DEFAULT_TMPLS.nism) : (tmpls.dd||DEFAULT_TMPLS.dd);
-  const stageTmpl = tmplSet[r.status] || tmplSet[Object.keys(tmplSet)[0]];
-  const vars = { name:r.name||'', bdm:r.bdm||'', arn:r.arn||r.id||'', sender:cfg.myName||'L&D Team, SAMCO Wealth' };
-  const text = mode==='wa' ? fillTmpl(stageTmpl.wa||'', vars) : `Subject: ${fillTmpl(stageTmpl.subject||'Follow-up',vars)}\n\n${fillTmpl(stageTmpl.email||'',vars)}`;
+  const daysStuck = days(r.stageDate || r.date);
+  const vars = { name:r.name||'', bdm:r.bdm||'', arn:r.arn||r.id||'', days:daysStuck, sender:cfg.myName||'L&D Team, SAMCO Wealth' };
+
+  // Try to find a matching sequence interval first (escalating follow-up)
+  const seqMatch = getBestReminder(r, type);
+  let text = '';
+  if(seqMatch){
+    const iv = seqMatch.interval;
+    if(mode==='wa'){
+      text = fillTmpl(iv.wa||'', vars);
+    } else {
+      text = `Subject: ${fillTmpl(iv.subject||'Follow-up',vars)}\n\n${fillTmpl(iv.email||'',vars)}`;
+    }
+  } else {
+    // Fall back to stage reminder template
+    const tmplSet = type==='nism' ? (tmpls.nism||DEFAULT_TMPLS.nism) : (tmpls.dd||DEFAULT_TMPLS.dd);
+    const stageTmpl = tmplSet[r.status] || tmplSet[Object.keys(tmplSet)[0]];
+    text = mode==='wa' ? fillTmpl(stageTmpl.wa||'', vars) : `Subject: ${fillTmpl(stageTmpl.subject||'Follow-up',vars)}\n\n${fillTmpl(stageTmpl.email||'',vars)}`;
+  }
+
+  // Show which escalation level is firing
+  const seqLabel = seqMatch ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 10px;font-size:10px;color:#92400e;margin-bottom:8px"><i class="ti ti-clock"></i> <strong>Escalation message</strong> — ${daysStuck} days stuck · ${seqMatch.seq.label}</div>` : '';
+
   document.getElementById('modal-title').textContent = mode==='wa'?`WhatsApp to ${r.bdm}`:`Email to ${r.bdm}`;
   document.getElementById('modal-text').value = text;
-  document.getElementById('modal-phone').textContent = r.mobile?`Mobile: ${r.mobile}`:'No mobile on file.';
+  document.getElementById('modal-phone').innerHTML = seqLabel + (r.mobile?`Mobile: ${r.mobile}`:'No mobile on file.');
   modalPhone = r.mobile||'';
   document.getElementById('msg-modal').classList.add('open');
 }
@@ -979,10 +1012,95 @@ function sendMail(){ const txt=document.getElementById('modal-text').value; cons
 // ══════════════════════════════════════════════════════════
 // MESSAGE TEMPLATES UI
 // ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// FOLLOW-UP SEQUENCES — default config
+// Each sequence entry: { stage, pipeline, label, intervals: [{days, wa, email, subject}] }
+// ══════════════════════════════════════════════════════════
+const DEFAULT_SEQUENCES = [
+  {
+    id:'nism_both_exam', pipeline:'nism', stage:'both_sessions',
+    label:'NISM — Both sessions done → Exam not registered',
+    intervals:[
+      { days:10, subject:'Follow-up: {name} — Exam registration pending (10 days)',
+        wa:'Hi {bdm},\n\nGentle reminder — *{name}* completed both NISM sessions {days} days ago but has not yet registered for the exam.\n\nCould you please nudge them to register?\n\nThanks,\n{sender}',
+        email:'Hi {bdm},\n\n{name} completed both NISM sessions {days} days ago but has not yet registered for the NISM exam. A gentle nudge from your end would help.\n\nBest regards,\n{sender}' },
+      { days:20, subject:'Follow-up (Urgent): {name} — Exam registration still pending (20 days)',
+        wa:'Hi {bdm},\n\n*{name}* has still not registered for the NISM exam — it has been {days} days since they completed both sessions.\n\nThis is delaying their empanelment. Could you please prioritise this?\n\nThanks,\n{sender}',
+        email:'Hi {bdm},\n\n{name} has not registered for the NISM exam despite completing both sessions {days} days ago. This is delaying their empanelment. Kindly prioritise this.\n\nBest regards,\n{sender}' },
+      { days:30, subject:'URGENT: {name} — Exam registration pending 30+ days',
+        wa:'Hi {bdm},\n\n⚠️ *{name}* has been stuck at "Both sessions done" for *{days} days* without registering for the exam.\n\nCould you please update me on what is the reason for the delay? Is there any support needed?\n\nThanks,\n{sender}',
+        email:'Hi {bdm},\n\n{name} has been stuck at "Both sessions done" for {days} days without registering for the NISM exam. Kindly share the reason for the delay and confirm if any support is needed.\n\nBest regards,\n{sender}' },
+    ]
+  },
+  {
+    id:'nism_cleared_arn', pipeline:'nism', stage:'cleared',
+    label:'NISM — Cleared exam → ARN not registered',
+    intervals:[
+      { days:10, subject:'Follow-up: {name} — ARN registration pending (10 days)',
+        wa:'Hi {bdm},\n\n*{name}* cleared the NISM exam {days} days ago but their ARN has not been registered yet.\n\nCould you please help them complete the ARN registration?\n\nThanks,\n{sender}',
+        email:'Hi {bdm},\n\n{name} cleared the NISM exam {days} days ago but ARN registration is still pending. Please assist them.\n\nBest regards,\n{sender}' },
+      { days:20, subject:'Urgent: {name} — ARN still not registered (20 days)',
+        wa:'Hi {bdm},\n\n*{name}* cleared the exam but it has been {days} days and ARN is still not registered. This is blocking empanelment.\n\nPlease update me on the status.\n\nThanks,\n{sender}',
+        email:'Hi {bdm},\n\n{name} cleared the exam {days} days ago but ARN is still not registered, blocking empanelment. Please share an update.\n\nBest regards,\n{sender}' },
+    ]
+  },
+  {
+    id:'dd_both_active', pipeline:'dd', stage:'both_sessions',
+    label:'Deep Dive — Both sessions done → Not yet active',
+    intervals:[
+      { days:10, subject:'Follow-up: ARN {arn} — Activation pending (10 days)',
+        wa:'Hi {bdm},\n\nARN *{arn}* completed both Deep Dive sessions {days} days ago but has not placed a trade yet.\n\nCould you please check in with them and encourage them to go active?\n\nThanks,\n{sender}',
+        email:'Hi {bdm},\n\nARN {arn} completed both Deep Dive sessions {days} days ago but has not yet placed a trade. Please follow up for activation.\n\nBest regards,\n{sender}' },
+      { days:20, subject:'Follow-up (Urgent): ARN {arn} — Still not active (20 days)',
+        wa:'Hi {bdm},\n\nARN *{arn}* has completed both sessions but it has been *{days} days* without any trade activity.\n\nCould you share what is the reason? Is there any issue with the portal or process?\n\nThanks,\n{sender}',
+        email:'Hi {bdm},\n\nARN {arn} attended both Deep Dive sessions {days} days ago but remains inactive. Please share the reason for the delay and any support needed.\n\nBest regards,\n{sender}' },
+      { days:30, subject:'URGENT: ARN {arn} — 30+ days since training, no activation',
+        wa:'Hi {bdm},\n\n⚠️ ARN *{arn}* has been inactive for *{days} days* after completing both Deep Dive sessions.\n\nThis is impacting our activation KRA. Could you please share a concrete update on when they plan to place their first trade?\n\nThanks,\n{sender}',
+        email:'Hi {bdm},\n\nARN {arn} has been inactive for {days} days since completing both Deep Dive sessions. This is impacting our KRA metrics. Please share a specific timeline for activation.\n\nBest regards,\n{sender}' },
+    ]
+  },
+  {
+    id:'dd_pending_scheduled', pipeline:'dd', stage:'pending',
+    label:'Deep Dive — Form submitted → Session not scheduled',
+    intervals:[
+      { days:7, subject:'Follow-up: ARN {arn} — Session not scheduled yet (7 days)',
+        wa:'Hi {bdm},\n\nARN *{arn}* submitted the Deep Dive registration {days} days ago but a session has not been scheduled yet.\n\nCould you please coordinate to schedule their session?\n\nThanks,\n{sender}',
+        email:'Hi {bdm},\n\nARN {arn} submitted the Deep Dive form {days} days ago but no session has been scheduled. Please coordinate at the earliest.\n\nBest regards,\n{sender}' },
+      { days:14, subject:'Reminder: ARN {arn} — Session scheduling overdue (14 days)',
+        wa:'Hi {bdm},\n\nARN *{arn}* has been waiting {days} days for a Deep Dive session to be scheduled. Could you please prioritise this?\n\nThanks,\n{sender}',
+        email:'Hi {bdm},\n\nARN {arn} submitted the Deep Dive form {days} days ago and is still awaiting a session. Kindly prioritise scheduling.\n\nBest regards,\n{sender}' },
+    ]
+  },
+];
+
+let sequences = JSON.parse(localStorage.getItem('sequences') || JSON.stringify(DEFAULT_SEQUENCES));
+
+// ── Which sequence interval applies based on days stuck ──────────────
+function getApplicableInterval(seq, daysStuck){
+  // Find the highest day threshold that has been crossed
+  const crossed = seq.intervals.filter(iv => daysStuck >= iv.days);
+  if(!crossed.length) return null;
+  return crossed.reduce((a,b) => b.days > a.days ? b : a);
+}
+
+// ── Get the best reminder message for a record ───────────────────────
+function getBestReminder(r, pipeline){
+  const daysStuck = days(r.stageDate || r.date);
+  // Find all sequences matching this pipeline + stage
+  const matching = sequences.filter(seq => seq.pipeline===pipeline && seq.stage===r.status);
+  for(const seq of matching){
+    const interval = getApplicableInterval(seq, daysStuck);
+    if(interval) return { interval, seq };
+  }
+  return null;
+}
+
 function switchTmplTab(type, btn){
   document.querySelectorAll('.msg-tmpl-tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
   document.getElementById('tmpl-nism-panel').style.display=type==='nism'?'block':'none';
   document.getElementById('tmpl-dd-panel').style.display=type==='dd'?'block':'none';
+  document.getElementById('tmpl-seq-panel').style.display=type==='seq'?'block':'none';
+  if(type==='seq') renderSeqUI();
 }
 
 function renderTmplUI(){
@@ -1009,15 +1127,69 @@ function renderTmplUI(){
   }).join('');
 }
 
-function saveTmpls(){
+function renderSeqUI(){
+  const el = document.getElementById('seq-list');
+  el.innerHTML = sequences.map((seq,si) => `
+    <div class="tmpl-stage" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="tmpl-stage-lbl" style="font-size:11px">${seq.label}</div>
+        <button class="btn btn-primary btn-sm" onclick="addSeqInterval(${si})"><i class="ti ti-plus"></i> Add interval</button>
+      </div>
+      ${seq.intervals.map((iv,ii) => `
+        <div style="background:#fff;border:1px solid #e5e4de;border-radius:8px;padding:10px 12px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div class="field"><label>After (days)</label>
+              <input type="number" value="${iv.days}" min="1" onchange="updateSeqDay(${si},${ii},this.value)" style="width:70px;margin-top:3px">
+            </div>
+            <div style="flex:1;font-size:10px;color:#888;padding-top:14px">Days stuck at stage before this message fires</div>
+            <button class="btn btn-red btn-sm" onclick="removeSeqInterval(${si},${ii})" title="Remove this interval"><i class="ti ti-trash"></i></button>
+          </div>
+          <div class="field" style="margin-bottom:6px"><label>WhatsApp message</label>
+            <textarea id="seq-wa-${si}-${ii}" rows="4" style="width:100%;font-size:11px;padding:7px;border:1px solid #e5e4de;border-radius:6px;background:#f8f8f5;resize:vertical;font-family:inherit;line-height:1.6;margin-top:3px">${iv.wa||''}</textarea>
+          </div>
+          <div class="field" style="margin-bottom:6px"><label>Email subject</label>
+            <input type="text" id="seq-sub-${si}-${ii}" value="${esc(iv.subject||'')}" style="width:100%;margin-top:3px">
+          </div>
+          <div class="field"><label>Email body</label>
+            <textarea id="seq-email-${si}-${ii}" rows="4" style="width:100%;font-size:11px;padding:7px;border:1px solid #e5e4de;border-radius:6px;background:#f8f8f5;resize:vertical;font-family:inherit;line-height:1.6;margin-top:3px">${iv.email||''}</textarea>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function addSeqInterval(si){
+  const lastDays = sequences[si].intervals.length ? sequences[si].intervals[sequences[si].intervals.length-1].days+10 : 10;
+  sequences[si].intervals.push({days:lastDays, wa:'', email:'', subject:''});
+  saveSeqs(); renderSeqUI();
+}
+function removeSeqInterval(si,ii){
+  if(!confirm('Remove this interval?')) return;
+  sequences[si].intervals.splice(ii,1); saveSeqs(); renderSeqUI();
+}
+function updateSeqDay(si,ii,val){ sequences[si].intervals[ii].days=parseInt(val)||10; }
+function saveSeqs(){
+  sequences.forEach((seq,si)=>{
+    seq.intervals.forEach((iv,ii)=>{
+      const wa=document.getElementById(`seq-wa-${si}-${ii}`); if(wa) iv.wa=wa.value;
+      const sub=document.getElementById(`seq-sub-${si}-${ii}`); if(sub) iv.subject=sub.value;
+      const email=document.getElementById(`seq-email-${si}-${ii}`); if(email) iv.email=email.value;
+    });
+  });
+  localStorage.setItem('sequences', JSON.stringify(sequences));
+}
+
+function saveAllTmpls(){
+  // Save stage templates
   const nismStages=NISM_STAGES.filter(s=>s.key!=='empanelled'&&s.key!=='session2');
   const ddStages=DD_STAGES.filter(s=>s.key!=='active'&&s.key!=='session2');
   tmpls.nism=tmpls.nism||{}; tmpls.dd=tmpls.dd||{};
   nismStages.forEach(s=>{ tmpls.nism[s.key]={wa:(document.getElementById('ntwa-'+s.key)||{}).value||'',subject:(document.getElementById('ntsub-'+s.key)||{}).value||'',email:(document.getElementById('ntemail-'+s.key)||{}).value||''}; });
   ddStages.forEach(s=>{ tmpls.dd[s.key]={wa:(document.getElementById('dtwa-'+s.key)||{}).value||'',subject:(document.getElementById('dtsub-'+s.key)||{}).value||'',email:(document.getElementById('dtemail-'+s.key)||{}).value||''}; });
-  save(); toast('Templates saved!');
+  // Save sequences
+  saveSeqs();
+  save(); toast('All templates saved!');
 }
-function resetTmpls(){ if(!confirm('Reset all templates to default?')) return; tmpls=JSON.parse(JSON.stringify(DEFAULT_TMPLS)); save(); renderTmplUI(); toast('Templates reset.'); }
+function resetTmpls(){ if(!confirm('Reset all templates to default?')) return; tmpls=JSON.parse(JSON.stringify(DEFAULT_TMPLS)); sequences=JSON.parse(JSON.stringify(DEFAULT_SEQUENCES)); saveSeqs(); save(); renderTmplUI(); renderSeqUI(); toast('Templates reset.'); }
 
 // ══════════════════════════════════════════════════════════
 // INVITATIONS
