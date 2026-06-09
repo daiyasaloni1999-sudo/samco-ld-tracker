@@ -469,6 +469,17 @@ select:focus,input:focus{border-color:#999}
 </div>
 
 <div id="notif" class="notif"></div>
+<div id="edit-modal" class="modal-bg">
+  <div class="modal" style="width:520px">
+    <h3 id="edit-modal-title">Edit record</h3>
+    <div id="edit-modal-body"></div>
+    <div class="modal-acts">
+      <button class="btn" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Save changes</button>
+    </div>
+  </div>
+</div>
+
 <div id="msg-modal" class="modal-bg">
   <div class="modal">
     <h3 id="modal-title">Message preview</h3>
@@ -794,6 +805,7 @@ function renderNism(){
       <td>${extraInputNism(r)}</td>
       <td><select onchange="updateNismStatus(${r.id},this.value)" style="font-size:10px;padding:3px 5px;border:1px solid #ddd;border-radius:5px;background:#fff;max-width:140px">${opts}</select></td>
       <td><div style="display:flex;gap:3px">
+        <button class="btn btn-amber btn-sm" onclick="openEdit(${r.id},'nism')" title="Edit record"><i class="ti ti-pencil"></i></button>
         <button class="btn btn-green btn-sm" onclick="openRemind(${r.id},'nism','wa')" title="WhatsApp BDM"><i class="ti ti-brand-whatsapp"></i></button>
         <button class="btn btn-blue btn-sm" onclick="openRemind(${r.id},'nism','email')" title="Email BDM"><i class="ti ti-mail"></i></button>
         <button class="btn btn-red btn-sm" onclick="deleteNism(${r.id})" title="Delete record"><i class="ti ti-trash"></i></button>
@@ -857,6 +869,7 @@ function renderDD(){
       <td><div style="display:flex;flex-direction:column;gap:2px">${extraInputDD(r)}</div></td>
       <td><select onchange="updateDDStatus(${r.id},this.value)" style="font-size:10px;padding:3px 5px;border:1px solid #ddd;border-radius:5px;background:#fff;max-width:130px">${opts}</select></td>
       <td><div style="display:flex;gap:3px">
+        <button class="btn btn-amber btn-sm" onclick="openEdit(${r.id},'dd')" title="Edit record"><i class="ti ti-pencil"></i></button>
         <button class="btn btn-green btn-sm" onclick="openRemind(${r.id},'dd','wa')" title="WhatsApp BDM"><i class="ti ti-brand-whatsapp"></i></button>
         <button class="btn btn-blue btn-sm" onclick="openRemind(${r.id},'dd','email')" title="Email BDM"><i class="ti ti-mail"></i></button>
         <button class="btn btn-red btn-sm" onclick="deleteDD(${r.id})" title="Delete record"><i class="ti ti-trash"></i></button>
@@ -893,6 +906,97 @@ function updateNismField(id,field,val){ const r=nismData.find(r=>r.id===id); if(
 function updateDDField(id,field,val){   const r=ddData.find(r=>r.id===id);   if(r) r[field]=val; save(); }
 function deleteNism(id){ const r=nismData.find(r=>r.id===id); if(!r) return; if(!confirm("Delete \""+r.name+"\" from NISM pipeline? This cannot be undone.")) return; nismData=nismData.filter(x=>x.id!==id); save(); renderNism(); updateRC(); toast("Record deleted."); }
 function deleteDD(id){   const r=ddData.find(r=>r.id===id);   if(!r) return; if(!confirm("Delete ARN \""+r.arn+"\" from Deep Dive? This cannot be undone.")) return; ddData=ddData.filter(x=>x.id!==id); save(); renderDD(); updateRC(); toast("Record deleted."); }
+
+// ══════════════════════════════════════════════════════════
+// EDIT MODAL
+// ══════════════════════════════════════════════════════════
+let editCtx = { id: null, type: null };
+
+function openEdit(id, type){
+  editCtx = { id, type };
+  const r = type==='nism' ? nismData.find(r=>r.id===id) : ddData.find(r=>r.id===id);
+  if(!r) return;
+
+  document.getElementById('edit-modal-title').textContent = type==='nism'
+    ? `Edit candidate — ${r.name}`
+    : `Edit partner — ARN ${r.arn}`;
+
+  const fld = (label, id, val, type='text', extra='') =>
+    `<div class="field" style="margin-bottom:10px">
+      <label style="font-size:10px;color:#888;font-weight:700;text-transform:uppercase">${label}</label>
+      <input type="${type}" id="ef-${id}" value="${esc(val||'')}" ${extra} style="width:100%;margin-top:3px;font-size:12px;padding:6px 9px;border:1px solid #e5e4de;border-radius:7px;background:#fff">
+    </div>`;
+
+  if(type==='nism'){
+    document.getElementById('edit-modal-body').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
+        ${fld('Candidate name','name', r.name)}
+        ${fld('BDM name','bdm', r.bdm)}
+        ${fld('Mobile number','mobile', r.mobile,'tel')}
+        ${fld('Email address','email', r.email,'email')}
+        ${fld('Registration date','date', r.date,'date')}
+        ${fld('ARN number','arn', r.arn,'text','placeholder="Leave blank if not yet obtained"')}
+        ${fld('Exam date','examDate', r.examDate,'date')}
+      </div>
+      <div style="font-size:10px;color:#aaa;margin-top:4px">Status and pipeline stage are updated from the main table — not here.</div>`;
+  } else {
+    document.getElementById('edit-modal-body').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
+        ${fld('ARN number','arn', r.arn,'text')}
+        ${fld('Partner name','pname', r.pname)}
+        ${fld('BDM name','bdm', r.bdm)}
+        ${fld('Mobile number','mobile', r.mobile,'tel')}
+        ${fld('Focus area','focus', r.focus,'text','placeholder="e.g. MF, US stocks"')}
+        ${fld('Submission date','date', r.date,'date')}
+        ${fld('Session 1 date','s1date', r.s1date,'date')}
+        ${fld('Session 2 date','s2date', r.s2date,'date')}
+        ${fld('AUM (₹)','aum', r.aum,'text','placeholder="e.g. 500000"')}
+      </div>
+      <div style="font-size:10px;color:#aaa;margin-top:4px">Status and pipeline stage are updated from the main table — not here.</div>`;
+  }
+
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function saveEdit(){
+  const { id, type } = editCtx;
+  const g = f => (document.getElementById('ef-'+f)||{}).value||'';
+
+  if(type==='nism'){
+    const r = nismData.find(r=>r.id===id);
+    if(!r) return;
+    r.name    = g('name').trim() || r.name;
+    r.bdm     = g('bdm').trim()  || r.bdm;
+    r.mobile  = g('mobile').trim();
+    r.email   = g('email').trim();
+    r.date    = g('date') || r.date;
+    const newArn = g('arn').trim();
+    if(newArn && newArn !== r.arn){ r.arn = newArn; if(!['arn_registered','empanelled'].includes(r.status)) r.status='arn_registered'; }
+    r.examDate = g('examDate');
+    save(); renderNism(); updateRC();
+  } else {
+    const r = ddData.find(r=>r.id===id);
+    if(!r) return;
+    r.arn    = g('arn').trim()   || r.arn;
+    r.pname  = g('pname').trim();
+    r.bdm    = g('bdm').trim()   || r.bdm;
+    r.mobile = g('mobile').trim();
+    r.focus  = g('focus').trim();
+    r.date   = g('date')  || r.date;
+    r.s1date = g('s1date');
+    r.s2date = g('s2date');
+    r.aum    = g('aum').trim();
+    save(); renderDD(); updateRC();
+  }
+
+  closeEditModal();
+  toast('Record updated.');
+}
+
+function closeEditModal(){
+  document.getElementById('edit-modal').classList.remove('open');
+  editCtx = { id: null, type: null };
+}
 
 function addNism(){
   const name=document.getElementById('n-name').value.trim();
