@@ -1075,37 +1075,83 @@ function setupDigest(){
 }
 
 // ══════════════════════════════════════════════════════════
-// MESSAGE MODAL (reminder)
+// MESSAGE MODAL — grouped by BDM + stage
+// When you click remind on any record, ALL records under the
+// same BDM at the same stage are bundled into one message.
 // ══════════════════════════════════════════════════════════
 function openRemind(id, type, mode){
   const r = type==='nism' ? nismData.find(x=>x.id===id) : ddData.find(x=>x.id===id);
   if(!r){ toast('Record not found.'); return; }
-  const daysStuck = days(r.stageDate || r.date);
-  const vars = { name:r.name||'', bdm:r.bdm||'', arn:r.arn||r.id||'', days:daysStuck, sender:cfg.myName||'L&D Team, SAMCO Wealth' };
 
-  // Try to find a matching sequence interval first (escalating follow-up)
+  // Find all siblings — same BDM, same stage, same pipeline
+  const dataset = type==='nism' ? nismData : ddData;
+  const group = dataset.filter(x => x.bdm === r.bdm && x.status === r.status);
+  // Sort: the clicked record first, then others
+  const sorted = [r, ...group.filter(x=>x.id!==r.id)];
+
+  const bdm    = r.bdm;
+  const sender = cfg.myName || 'L&D Team, SAMCO Wealth';
+  const stage  = type==='nism'
+    ? (NISM_STAGES.find(s=>s.key===r.status)||{}).label || r.status
+    : (DD_STAGES.find(s=>s.key===r.status)||{}).label   || r.status;
+
+  // Build the name/ARN list for the message
+  const isSingle = sorted.length === 1;
+  const nameList = sorted.map((x,i) => {
+    const label = type==='nism' ? x.name : `ARN ${x.arn}${x.pname?' ('+x.pname+')':''}`;
+    const d = days(x.stageDate||x.date);
+    return `${i+1}. ${label} — ${d} days at this stage`;
+  }).join('\n');
+
+  const nameListShort = sorted.map(x =>
+    type==='nism' ? x.name : `ARN ${x.arn}`
+  ).join(', ');
+
+  // Try escalation sequence on the clicked record
   const seqMatch = getBestReminder(r, type);
-  let text = '';
-  if(seqMatch){
+  const daysStuck = days(r.stageDate || r.date);
+
+  let waText, emailSubject, emailBody;
+
+  if(seqMatch && isSingle){
+    // Single record with escalation sequence
     const iv = seqMatch.interval;
-    if(mode==='wa'){
-      text = fillTmpl(iv.wa||'', vars);
-    } else {
-      text = `Subject: ${fillTmpl(iv.subject||'Follow-up',vars)}\n\n${fillTmpl(iv.email||'',vars)}`;
-    }
-  } else {
-    // Fall back to stage reminder template
+    const vars = { name:r.name||'', bdm, arn:r.arn||'', days:daysStuck, sender };
+    waText     = fillTmpl(iv.wa||'', vars);
+    emailSubject = fillTmpl(iv.subject||'Follow-up', vars);
+    emailBody  = fillTmpl(iv.email||'', vars);
+  } else if(isSingle){
+    // Single record, standard template
     const tmplSet = type==='nism' ? (tmpls.nism||DEFAULT_TMPLS.nism) : (tmpls.dd||DEFAULT_TMPLS.dd);
     const stageTmpl = tmplSet[r.status] || tmplSet[Object.keys(tmplSet)[0]];
-    text = mode==='wa' ? fillTmpl(stageTmpl.wa||'', vars) : `Subject: ${fillTmpl(stageTmpl.subject||'Follow-up',vars)}\n\n${fillTmpl(stageTmpl.email||'',vars)}`;
+    const vars = { name:r.name||'', bdm, arn:r.arn||'', days:daysStuck, sender };
+    waText       = fillTmpl(stageTmpl.wa||'', vars);
+    emailSubject = fillTmpl(stageTmpl.subject||'Follow-up', vars);
+    emailBody    = fillTmpl(stageTmpl.email||'', vars);
+  } else {
+    // GROUPED message — multiple records under same BDM + stage
+    const pipeline = type==='nism' ? 'NISM Pathshala' : 'Deep Dive';
+    waText = `Hi ${bdm},\n\nThis is a consolidated follow-up for the following ${pipeline} ${type==='nism'?'candidates':'partners'} currently at stage *"${stage}"*:\n\n${nameList}\n\nCould you please share a status update for each of them and let us know if any action is pending from your end?\n\nThank you,\n${sender}`;
+    emailSubject = `Follow-up: ${sorted.length} ${type==='nism'?'candidates':'partners'} at "${stage}" stage — ${pipeline}`;
+    emailBody    = `Hi ${bdm},\n\nThis is a consolidated follow-up for the following ${pipeline} ${type==='nism'?'candidates':'partners'} currently at stage "${stage}":\n\n${nameList}\n\nKindly share a status update for each of them and confirm if any support is needed from our end.\n\nBest regards,\n${sender}`;
   }
 
-  // Show which escalation level is firing
-  const seqLabel = seqMatch ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 10px;font-size:10px;color:#92400e;margin-bottom:8px"><i class="ti ti-clock"></i> <strong>Escalation message</strong> — ${daysStuck} days stuck · ${seqMatch.seq.label}</div>` : '';
+  // Build info label for modal
+  const groupInfo = sorted.length > 1
+    ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:7px 10px;font-size:10px;color:#1e40af;margin-bottom:8px">
+        <i class="ti ti-users"></i> <strong>Grouped message</strong> — covers ${sorted.length} ${type==='nism'?'candidates':'ARNs'} under ${bdm} at same stage: ${nameListShort}
+       </div>`
+    : seqMatch
+      ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 10px;font-size:10px;color:#92400e;margin-bottom:8px">
+          <i class="ti ti-clock"></i> <strong>Day ${seqMatch.interval.days} escalation</strong> — ${daysStuck} days stuck
+         </div>`
+      : '';
 
-  document.getElementById('modal-title').textContent = mode==='wa'?`WhatsApp to ${r.bdm}`:`Email to ${r.bdm}`;
-  document.getElementById('modal-text').value = text;
-  document.getElementById('modal-phone').innerHTML = seqLabel + (r.mobile?`Mobile: ${r.mobile}`:'No mobile on file.');
+  document.getElementById('modal-title').textContent = mode==='wa'
+    ? `WhatsApp to ${bdm}${sorted.length>1?' ('+sorted.length+' records)':''}`
+    : `Email to ${bdm}${sorted.length>1?' ('+sorted.length+' records)':''}`;
+  document.getElementById('modal-text').value = mode==='wa' ? waText : `Subject: ${emailSubject}\n\n${emailBody}`;
+  document.getElementById('modal-phone').innerHTML = groupInfo + (r.mobile?`BDM mobile: ${r.mobile}`:'No mobile on file — add via edit ✏');
   modalPhone = r.mobile||'';
   document.getElementById('msg-modal').classList.add('open');
 }
